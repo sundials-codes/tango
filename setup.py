@@ -3,6 +3,7 @@ from setuptools import setup
 setup(
     name='Tango',
     version='0.20',
-    packages=['tango',],
+    #packages=['tango',],
     license='LGPL',
+    packages=setuptools.find_packages(),
 )
