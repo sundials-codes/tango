@@ -13,6 +13,8 @@ state solution which can be compared with the numerically found solution.
 #import sys
 #sys.path.append("/path/to/tango")
 
+import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 import kinsol as kin
@@ -22,6 +24,11 @@ import modified_noisyflux as noisyflux
 from tango import derivatives
 from tango import HToMatrixFD
 from tango import lodestro_method
+
+from matplotlib.animation import FuncAnimation, PillowWriter
+
+import warnings
+#warnings.filterwarnings('error')
 
 def steady_state_solution(x, nL, p=2, S0=1, delta=0.1, L=1):
     """Return the exact steady state solution for the Shestakov test problem
@@ -70,12 +77,14 @@ class FluxModel:
 
 class Problem:
     #### create stuff
-    maxIterations = 10**5
-    np.set_printoptions(precision=24)
-    alpha = 0.1  # relaxation parameter on the effective diffusion coefficient
     p = 2     # power for analytic flux
-    tol = 1e-8
+    alpha = 0.1
     depth = 0
+    beta = 1.0
+
+    maxIterations = 300
+    np.set_printoptions(precision=24)
+    tol = 1e-8
     noise_Lac = 0.2  # correlation length of noise
     noise_amplitude = 0
 
@@ -83,12 +92,13 @@ class Problem:
 
     # problem setup
     L = 1           # size of domain
-    N = 500         # number of spatial grid points
+    N = 500          # number of spatial grid points
     dx = L / (N-1)  # spatial grid size
     x = np.arange(N)*dx # location corresponding to grid points j=0, ..., N-1
 
     # initial condition
-    n_IC = 0.02 - 0.01 * x
+    #n_IC = 0.02 - 0.01 * x
+    n_IC = 1.0 + 0.0 * x
     #n_IC = nSave + .0001
     n_mminus1 = np.zeros_like(n_IC)
     n_mminus1[:] = n_IC
@@ -96,20 +106,23 @@ class Problem:
 
     # boundary condition
     nL = 1e-2
+    #nL = 0.0
 
     # time step  (effectively infinite)
-    dt = 1e4
+    dt = 1e-5
+    #dt = 1e-2
 
     # instantiate flux model
     fluxModel = FluxModel(dx, p=p)
 
     # Add decorator to apply noise first, then apply buffer
-    fluxModel = noisyflux.NoisyFlux(fluxModel, noise_amplitude, noise_Lac, dx)   # for AR(1) noise
+    #fluxModel = noisyflux.NoisyFlux(fluxModel, noise_amplitude, noise_Lac, dx)   # for AR(1) noise
 
     # initialize data storage
     nAll = np.zeros((maxIterations, N))
     fluxAll = np.zeros_like(nAll)
     residualHistory = np.zeros(maxIterations)
+    myResidHistory = np.zeros(maxIterations)
 
     # initialize FluxSplitter.  
     # for many problems, the exact value of these parameters doesn't matter too much.
@@ -120,12 +133,12 @@ class Problem:
 
     D_EWMA = 0
     c_EWMA = 0
-    g = 0
+
+    resid = 0
 
     def G(sunvec_n, sunvec_g, user_data):
         profile = kin.N_VGetData(sunvec_n)
         g = kin.N_VGetData(sunvec_g)
-        Problem.g = g
         
         # get next turbulent flux
         flux = Problem.fluxModel.get_flux(profile)
@@ -175,12 +188,33 @@ class Problem:
         Problem.nAll[Problem.iterationNumber, :] = g
         Problem.fluxAll[Problem.iterationNumber, :] = flux
 
+        diff = g - profile
+        Problem.myResidHistory[Problem.iterationNumber] = np.amax(np.abs(diff))
+
         # has to increment interal iteration count
         Problem.iterationNumber += 1
 
         return 0
 
 ### MAIN
+if "beta" in sys.argv:
+    Problem.beta = float(sys.argv[sys.argv.index("beta")+1])
+
+if "depth" in sys.argv:
+    Problem.depth = int(sys.argv[sys.argv.index("depth")+1])
+
+if "c" in sys.argv:
+    Problem.c = float(sys.argv[sys.argv.index("c")+1])
+    Problem.alpha = Problem.c / Problem.p
+
+if "alpha" in sys.argv:
+    Problem.alpha = float(sys.argv[sys.argv.index("alpha")+1])
+
+if "p" in sys.argv:
+    Problem.fluxModel.p = int(sys.argv[sys.argv.index("p")+1])
+
+if "maxIterations" in sys.argv:
+    Problem.maxIterations = int(sys.argv[sys.argv.index("maxIterations")+1])
 
 # vector
 sunvec_n = kin.N_VMake_Serial(Problem.n_IC)
@@ -197,20 +231,24 @@ flag = kin.KINInitPy(kmem, sysfn, sunvec_n)
 # options
 flag = kin.KINSetFuncNormTol(kmem, Problem.tol)
 flag = kin.KINSetErrFilename(kmem, "error.log")
+flag = kin.KINSetDampingAA(kmem, Problem.beta)
+#flag = kin.KINSetInfoFile(kmem, "kinfo.log")
 
 # solve
 kin.N_VConst(1.0, sunvec_scale)
-flag = kin.KINSol(kmem,
-                  sunvec_n,
-                  kin.KIN_FP,
-                  sunvec_scale,
-                  sunvec_scale)
+try:
+    flag = kin.KINSol(kmem,
+                      sunvec_n,
+                      kin.KIN_FP,
+                      sunvec_scale,
+                      sunvec_scale)
+except:
+    pass
 
 # finish
 
 nFinal = Problem.profile
 #print(nFinal)
-print(Problem.g)
 iters = np.arange(0,Problem.maxIterations)
 #convIter = np.argmax(Problem.residualHistory < Problem.tol)
 #print(convIter)
@@ -220,20 +258,70 @@ print(Problem.iterationNumber)
 #  Also plot the analytic steady state solution
 nss = steady_state_solution(Problem.x, Problem.nL, p=Problem.p)
 #print(nss - Problem.g)
+print( np.amax(np.abs(nFinal - nss)) )
 
-'''
-plt.figure()
-plt.plot(x, nFinal, 'b-', label='numerical solution')
-plt.plot(x, nss, 'k--', label='analytic solution')
-plt.xlabel('x')
-plt.title('n')
-plt.legend(loc='best')
-plt.show()
+if 'plot' in sys.argv:
+    print('Plotting...')
+    fig, ax = plt.subplots()
+    x = Problem.x
+    y = []
+    ln1, = plt.plot(x,nss,'k--', label='analytic solution')
+    ln2, = plt.plot([],[],'b-', label='numerical solution')
 
-# plot residuals
-plt.figure()
-plt.semilogy(iters, residualHistory)
-plt.xlabel('iteration number')
-plt.title('Residual')
-plt.show()
-'''
+    def init():
+        ax.set_xlim(0,Problem.L)
+        ax.set_ylim(0,0.05)
+
+    def update(i):
+        y = Problem.nAll[i,:]
+        ax.set_ylim(0,np.amax(y)+0.01)
+        ln2.set_data(x,y)
+        if i+1 == Problem.iterationNumber:
+            ln2.set_color('red')
+
+    ani = FuncAnimation(fig, update, Problem.iterationNumber, init_func=init)
+    writer = PillowWriter(fps=1)
+    ani.save('solution.gif', writer=writer)
+
+    # plot residuals
+    plt.figure()
+    plt.semilogy(iters, Problem.residualHistory)
+    plt.xlabel('iteration number')
+    plt.title('RMS residual')
+    plt.savefig('rms.png')
+
+    plt.figure()
+    plt.semilogy(iters, Problem.myResidHistory)
+    plt.xlabel('iteration number')
+    plt.title('Max-norm Residual')
+    plt.savefig('residual.png')
+
+if 'residplot' in sys.argv:
+    print('Plotting residual...')
+    fig, ax = plt.subplots()
+    x = Problem.x
+    y = []
+    ln2, = plt.plot([],[],'b-', label='residual')
+
+    def init():
+        ax.set_xlim(0,Problem.L)
+        #ax.set_ylim(-0.01,0.01)
+        ax.set_yscale('symlog', linthreshy=1e-8)
+
+    def update(i):
+        y1 = Problem.nAll[i+1,:]
+        y2 = Problem.nAll[i,:]
+        y = y1 - y2
+        ln2.set_data(x,y)
+        if i == Problem.iterationNumber:
+            ln2.set_color('red')
+
+    ani = FuncAnimation(fig, update, Problem.iterationNumber-1, init_func=init)
+    writer = PillowWriter(fps=5)
+    ani.save('residual.gif', writer=writer)
+
+if 'save' in sys.argv:
+    print('Saving residual data...')
+    fname = sys.argv[sys.argv.index("save")+1]
+    np.savetxt(fname + "resid", Problem.myResidHistory[0:Problem.iterationNumber])
+    np.savetxt(fname + "iters", iters)
