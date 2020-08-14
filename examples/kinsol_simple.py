@@ -97,19 +97,20 @@ class Problem:
     x = np.arange(N)*dx # location corresponding to grid points j=0, ..., N-1
 
     # initial condition
-    #n_IC = 0.02 - 0.01 * x
-    n_IC = 1.0 + 0.0 * x
+    n_IC = 0.02 - 0.01 * x
+    #n_IC = 1.0 + 0.0 * x
     #n_IC = nSave + .0001
     n_mminus1 = np.zeros_like(n_IC)
     n_mminus1[:] = n_IC
-    profile = n_IC
+    profile = np.zeros_like(n_IC)
+    profile[:] = n_IC
 
     # boundary condition
     nL = 1e-2
     #nL = 0.0
 
     # time step  (effectively infinite)
-    dt = 1e-5
+    dt = 1e4
     #dt = 1e-2
 
     # instantiate flux model
@@ -136,6 +137,8 @@ class Problem:
 
     resid = 0
 
+    jack = False
+
     def G(sunvec_n, sunvec_g, user_data):
         profile = kin.N_VGetData(sunvec_n)
         g = kin.N_VGetData(sunvec_g)
@@ -158,6 +161,9 @@ class Problem:
         else:
             Problem.D_EWMA = Problem.alpha * D + (1 - Problem.alpha) * Problem.D_EWMA
             Problem.c_EWMA = Problem.alpha * c + (1 - Problem.alpha) * Problem.c_EWMA
+
+        if Problem.jack:
+            Problem.D_EWMA = D
 
         H2Turb = Problem.D_EWMA
         H3 = -Problem.c_EWMA
@@ -184,7 +190,14 @@ class Problem:
         # solve matrix equation for new profile
         g[:] = HToMatrixFD.solve(A, B, C, f)
 
-        # save data
+        if Problem.jack:
+            prof = HToMatrixFD.solve(A,B,C,f)
+            if Problem.iterationNumber == 0:
+                pass
+            else:
+                a = Problem.alpha
+                g[:] = a*prof + (1-a)*profile
+
         Problem.nAll[Problem.iterationNumber, :] = g
         Problem.fluxAll[Problem.iterationNumber, :] = flux
 
@@ -213,11 +226,14 @@ if "alpha" in sys.argv:
 if "p" in sys.argv:
     Problem.fluxModel.p = int(sys.argv[sys.argv.index("p")+1])
 
+if "jack" in sys.argv:
+    Problem.jack = True
+
 if "maxIterations" in sys.argv:
     Problem.maxIterations = int(sys.argv[sys.argv.index("maxIterations")+1])
 
 # vector
-sunvec_n = kin.N_VMake_Serial(Problem.n_IC)
+sunvec_n = kin.N_VMake_Serial(Problem.profile)
 scale = np.zeros(Problem.N)
 sunvec_scale = kin.N_VMake_Serial(scale)
 
@@ -273,13 +289,16 @@ if 'plot' in sys.argv:
         ax.set_ylim(0,0.05)
 
     def update(i):
-        y = Problem.nAll[i,:]
+        if i == 0:
+            y = Problem.n_IC
+        else:
+            y = Problem.nAll[i-1,:]
         ax.set_ylim(0,np.amax(y)+0.01)
         ln2.set_data(x,y)
-        if i+1 == Problem.iterationNumber:
+        if i == Problem.iterationNumber:
             ln2.set_color('red')
 
-    ani = FuncAnimation(fig, update, Problem.iterationNumber, init_func=init)
+    ani = FuncAnimation(fig, update, Problem.iterationNumber+1, init_func=init)
     writer = PillowWriter(fps=1)
     ani.save('solution.gif', writer=writer)
 
@@ -309,15 +328,18 @@ if 'residplot' in sys.argv:
         ax.set_yscale('symlog', linthreshy=1e-8)
 
     def update(i):
-        y1 = Problem.nAll[i+1,:]
-        y2 = Problem.nAll[i,:]
-        y = y1 - y2
+        if i == 0:
+            y = Problem.nAll[0] - Problem.n_IC
+        else:
+            y1 = Problem.nAll[i,:]
+            y2 = Problem.nAll[i-1,:]
+            y = y1 - y2
         ln2.set_data(x,y)
         if i == Problem.iterationNumber:
             ln2.set_color('red')
 
-    ani = FuncAnimation(fig, update, Problem.iterationNumber-1, init_func=init)
-    writer = PillowWriter(fps=5)
+    ani = FuncAnimation(fig, update, Problem.iterationNumber, init_func=init)
+    writer = PillowWriter(fps=1)
     ani.save('residual.gif', writer=writer)
 
 if 'save' in sys.argv:
