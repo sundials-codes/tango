@@ -72,15 +72,43 @@ class FluxModel:
 # ****** Main ***** #
 def main():
 
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Run Shestakov example')
+
+    parser.add_argument('--alpha', type=float, default=0.1,
+                        help='Relaxation parameter')
+    parser.add_argument('--p', type=float, default=2.0,
+                        help='power for analytic flux')
+    parser.add_argument('--L', type=float, default=1.0,
+                        help='domain size [0,L]')
+    parser.add_argument('--N', type=int, default=500,
+                        help='number of spatial grid points')
+    parser.add_argument('--nL', type=float, default=1e-2,
+                        help='right boundary value')
+    parser.add_argument('--dt', type=float, default=1e4,
+                        help='time step size')
+    parser.add_argument('--maxiters', type=int, default=200,
+                        help='maximum number iterations')
+    parser.add_argument('--Dmin', type=float, default=1e-5,
+                        help='Minimum D value')
+    parser.add_argument('--Dmax', type=float, default=1e13,
+                        help='Maximum D value')
+    parser.add_argument('--dpdxThreshold', type=float, default=10,
+                        help='dpdx threshold value')
+
+    # parse command line args
+    args = parser.parse_args()
+
     #### create stuff
-    maxIterations = 200
-    alpha = 0.1  # relaxation parameter on the effective diffusion coefficient
-    p = 2     # power for analytic flux
+    maxIterations = args.maxiters
+    alpha = args.alpha  # relaxation parameter on the effective diffusion coefficient
+    p = args.p          # power for analytic flux
 
     # problem setup
-    L = 1           # size of domain
-    N = 500         # number of spatial grid points
-    dx = L / (N-1)  # spatial grid size
+    L = args.L          # size of domain
+    N = args.N          # number of spatial grid points
+    dx = L / (N-1)      # spatial grid size
     x = np.arange(N)*dx # location corresponding to grid points j=0, ..., N-1
 
     # initial condition
@@ -90,10 +118,10 @@ def main():
     profile = n_IC
 
     # boundary condition
-    nL = 1e-2
+    nL = args.nL
 
     # time step  (effectively infinite)
-    dt = 1e4
+    dt = args.dt
 
     # instantiate flux model
     fluxModel = FluxModel(dx, p=p)
@@ -106,7 +134,7 @@ def main():
     # initialize FluxSplitter.
     # for many problems, the exact value of these parameters doesn't matter too much.
     #  these parameters have to do with the splitting between diffusive and convective flux.
-    thetaParams = {'Dmin': 1e-5, 'Dmax': 1e13, 'dpdxThreshold': 10}
+    thetaParams = {'Dmin': args.Dmin, 'Dmax': args.Dmax, 'dpdxThreshold': args.dpdxThreshold}
 
     fluxSplitter = lodestro_method.FluxSplit(thetaParams)
 
