@@ -203,15 +203,19 @@ def main():
     plt.plot(x, nFinal, 'b-', label='numerical solution')
     plt.plot(x, nss, 'k--', label='analytic solution')
     plt.xlabel('x')
-    plt.title('n')
+    plt.ylabel('n')
+    plt.title('Final Solution')
     plt.legend(loc='best')
+    plt.grid()
     plt.show()
 
-    # plot residuals
+    # plot residual
     plt.figure()
     plt.semilogy(iters, residualHistory)
     plt.xlabel('iteration number')
-    plt.title('Residual')
+    plt.ylabel('Normalized RMS Norm of Residual')
+    plt.title('Final Residual')
+    plt.grid()
     plt.show()
 
 
