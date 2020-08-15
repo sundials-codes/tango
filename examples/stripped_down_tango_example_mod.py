@@ -218,6 +218,16 @@ def main():
     plt.grid()
     plt.show()
 
+    # plot absolute error
+    err = np.abs(nFinal - nss)
+    plt.figure()
+    plt.semilogy(x, err, 'b-', label='error')
+    plt.xlabel('x')
+    plt.ylabel('$\|n - n_{ss}\|$')
+    plt.title('Absolute Error')
+    plt.legend(loc='best')
+    plt.grid()
+    plt.show()
 
 
     # plots of first few iterations if desired
