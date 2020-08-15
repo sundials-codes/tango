@@ -8,7 +8,7 @@ This example is a nonlinear diffusion equation with specified diffusion coeffici
 state solution which can be compared with the numerically found solution.
 """
 
-## Adding the Tango directory to the PYTHONPATH environment variable is recommended.  
+## Adding the Tango directory to the PYTHONPATH environment variable is recommended.
 ##  But if tango is not added to the PYTHONPATH, these commands can be used to add them manually.
 #import sys
 #sys.path.append("/path/to/tango")
@@ -22,7 +22,7 @@ from tango import lodestro_method
 
 def steady_state_solution(x, nL, p=2, S0=1, delta=0.1, L=1):
     """Return the exact steady state solution for the Shestakov test problem
-    
+
     Inputs:
       x             Spatial coordinate grid (array)
       nL            boundary condition n(L) (scalar)
@@ -33,13 +33,13 @@ def steady_state_solution(x, nL, p=2, S0=1, delta=0.1, L=1):
     Outputs:
     """
     a = 1 / (p+1)   # convenient shortcut
-    
+
     nright = ( nL**a  +  a * (S0 * delta)**a * (L-x) )**(p+1)
     nleft = ( nL**a  +  a * (S0 * delta)**a * (L - delta + (p+1)/(p+2) * delta * (1 - (x/delta)**((p+2)/(p+1)))))**(p+1)
     nss = nright
     nss[x < delta] = nleft[x < delta]
     return nss
-    
+
 # ****** Source ****** #
 def source(x, S0=1):
     """Source that is nonzero for xa <= x <= xb.
@@ -96,24 +96,24 @@ nAll = np.zeros((maxIterations, N))
 fluxAll = np.zeros_like(nAll)
 residualHistory = np.zeros(maxIterations)
 
-# initialize FluxSplitter.  
+# initialize FluxSplitter.
 # for many problems, the exact value of these parameters doesn't matter too much.
 #  these parameters have to do with the splitting between diffusive and convective flux.
-thetaParams = {'Dmin': 1e-5, 'Dmax': 1e13, 'dpdxThreshold': 10} 
-   
+thetaParams = {'Dmin': 1e-5, 'Dmax': 1e13, 'dpdxThreshold': 10}
+
 fluxSplitter = lodestro_method.FluxSplit(thetaParams)
 
 
 for iterationNumber in np.arange(0, maxIterations):
     # get next turbulent flux
     flux = fluxModel.get_flux(profile)
-    
+
     # (put any inner iteration loop here)
-    
+
     # transform flux into effective transport coefficients.  H2=D, H3=-c
     # [use flux split class from lodestro_method]
     (D, c, _) = fluxSplitter.flux_to_transport_coeffs(flux, profile, dx)
-    
+
     # compute relaxation of D, c  (EWMA = Exponentially Weighted Moving Average)
     if iterationNumber == 0:
         D_EWMA = D
@@ -121,39 +121,39 @@ for iterationNumber in np.arange(0, maxIterations):
     else:
         D_EWMA = alpha * D + (1 - alpha) * D_EWMA
         c_EWMA = alpha * c + (1 - alpha) * c_EWMA
-    
+
     H2Turb = D_EWMA
     H3 = -c_EWMA
-       
-    
+
+
     # get H's for all the others (H1, H2, H7).  H's represent terms in the transport equation
     H1 = np.ones_like(x)
     H7 = source(x)
     H2const = 0.00  # could represent some background level of (classical) diffusion
     H2 = H2Turb + H2const
-    
+
     ## new --- discretize, then compute the residual, then solve the matrix equation for the new profile
     (A, B, C, f) = HToMatrixFD.H_to_matrix(dt, dx, nL, n_mminus1, H1, H2=H2, H3=H3, H7=H7)
-    
+
     # see fieldgroups.calculate_residual() for additional information on the residual calculation
     resid = A*np.concatenate((profile[1:], np.zeros(1))) + B*profile + C*np.concatenate((np.zeros(1), profile[:-1])) - f
     resid = resid / np.max(np.abs(f))  # normalize the residual
     rmsResid = np.sqrt( np.mean( resid**2 ))  # take an rms characterization of residual
     residualHistory[iterationNumber] = rmsResid
-    
+
     # solve matrix equation for new profile
     profile = HToMatrixFD.solve(A, B, C, f)
-    
+
     # save data
     nAll[iterationNumber, :] = profile
     fluxAll[iterationNumber, :] = flux
-    
+
     # check
     if np.any(profile < 0) == True:
         print(f'error.  negative value detected in profile at l={iterationNumber}')
         break
 
-    
+
 # finish
 
 nFinal = profile
