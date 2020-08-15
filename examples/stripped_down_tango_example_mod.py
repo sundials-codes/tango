@@ -96,6 +96,9 @@ def main():
                         help='Maximum D value')
     parser.add_argument('--dpdxThreshold', type=float, default=10,
                         help='dpdx threshold value')
+    parser.add_argument('--noplots', dest='finalplot',
+                        action='store_false', help='disable final plots')
+
 
     # parse command line args
     args = parser.parse_args()
@@ -195,64 +198,66 @@ def main():
     iters = np.arange(0, maxIterations)
 
 
-    # plot the last iteration of density --- presumably the correct solution, if converged
-    #  Also plot the analytic steady state solution
-    nss = steady_state_solution(x, nL, p=p)
+    if (args.finalplot):
 
-    plt.figure()
-    plt.plot(x, nFinal, 'b-', label='numerical solution')
-    plt.plot(x, nss, 'k--', label='analytic solution')
-    plt.xlabel('x')
-    plt.ylabel('n')
-    plt.title('Final Solution')
-    plt.legend(loc='best')
-    plt.grid()
-    plt.show()
+        # plot the last iteration of density --- presumably the correct solution, if converged
+        #  Also plot the analytic steady state solution
+        nss = steady_state_solution(x, nL, p=p)
 
-    # plot residual
-    plt.figure()
-    plt.semilogy(iters, residualHistory)
-    plt.xlabel('iteration number')
-    plt.ylabel('Normalized RMS Norm of Residual')
-    plt.title('Final Residual')
-    plt.grid()
-    plt.show()
+        plt.figure()
+        plt.plot(x, nFinal, 'b-', label='numerical solution')
+        plt.plot(x, nss, 'k--', label='analytic solution')
+        plt.xlabel('x')
+        plt.ylabel('n')
+        plt.title('Final Solution')
+        plt.legend(loc='best')
+        plt.grid()
+        plt.show()
 
-    # plot absolute error
-    err = np.abs(nFinal - nss)
-    plt.figure()
-    plt.semilogy(x, err, 'b-', label='error')
-    plt.xlabel('x')
-    plt.ylabel('$\|n - n_{ss}\|$')
-    plt.title('Absolute Error')
-    plt.legend(loc='best')
-    plt.grid()
-    plt.show()
+        # plot residual
+        plt.figure()
+        plt.semilogy(iters, residualHistory)
+        plt.xlabel('iteration number')
+        plt.ylabel('Normalized RMS Norm of Residual')
+        plt.title('Final Residual')
+        plt.grid()
+        plt.show()
 
-
-    # plots of first few iterations if desired
-    #plt.figure()
-    #plt.plot(x, nAll[0], 'k--')
-    #plt.plot(x, nAll[1], 'r--')
-    #plt.plot(x, nAll[2], 'b--')
-    #plt.plot(x, nAll[3], 'k-')
-    #plt.plot(x, nAll[4], 'r-')
-    #plt.plot(x, nAll[5], 'b-')
-    #plt.xlabel('x')
-    #plt.title('n')
+        # plot absolute error
+        err = np.abs(nFinal - nss)
+        plt.figure()
+        plt.semilogy(x, err, 'b-', label='error')
+        plt.xlabel('x')
+        plt.ylabel('$\|n - n_{ss}\|$')
+        plt.title('Absolute Error')
+        plt.legend(loc='best')
+        plt.grid()
+        plt.show()
 
 
-    #plt.figure()
-    #plt.plot(x, fluxAll[0], 'k--')
-    #plt.plot(x, fluxAll[1], 'r--')
-    #plt.plot(x, fluxAll[2], 'b--')
-    #plt.plot(x, fluxAll[3], 'k-')
-    #plt.plot(x, fluxAll[4], 'r-')
-    #plt.plot(x, fluxAll[5], 'b-')
-    #plt.xlabel('x')
-    #plt.title('flux')
+        # plots of first few iterations if desired
+        #plt.figure()
+        #plt.plot(x, nAll[0], 'k--')
+        #plt.plot(x, nAll[1], 'r--')
+        #plt.plot(x, nAll[2], 'b--')
+        #plt.plot(x, nAll[3], 'k-')
+        #plt.plot(x, nAll[4], 'r-')
+        #plt.plot(x, nAll[5], 'b-')
+        #plt.xlabel('x')
+        #plt.title('n')
 
-    #nSave = nFinal
+
+        #plt.figure()
+        #plt.plot(x, fluxAll[0], 'k--')
+        #plt.plot(x, fluxAll[1], 'r--')
+        #plt.plot(x, fluxAll[2], 'b--')
+        #plt.plot(x, fluxAll[3], 'k-')
+        #plt.plot(x, fluxAll[4], 'r-')
+        #plt.plot(x, fluxAll[5], 'b-')
+        #plt.xlabel('x')
+        #plt.title('flux')
+
+        #nSave = nFinal
 
 
 # ****** run main ****** #
