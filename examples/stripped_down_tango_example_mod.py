@@ -89,13 +89,13 @@ def main():
                         help='boundary value at x = 0 (left)')
     parser.add_argument('--nL', type=float, default=1.0e-2,
                         help='boundary value at x = L (right)')
-    parser.add_argument('--IC', type=str, default='poly',
-                        choices=['const', 'poly', 'sol'],
+    parser.add_argument('--IC', type=str, default='pow',
+                        choices=['powt', 'const', 'sol'],
                         help='set initial condition type')
     parser.add_argument('--c', type=float, default=1.0,
                         help='value for constant IC')
     parser.add_argument('--q', type=float, default=1.0,
-                        help='power in polynomial IC')
+                        help='power in pow IC')
     parser.add_argument('--dt', type=float, default=1e4,
                         help='time step size')
     parser.add_argument('--maxiters', type=int, default=200,
@@ -112,7 +112,7 @@ def main():
                         help='enable history plots')
     parser.add_argument('--historyplotrange', type=int, nargs=2, default=[0, 200],
                         help='iteration to use in history plots (inclusive)')
-    parser.add_argument('--plotnorm', type=str, default='RMS',
+    parser.add_argument('--norm', type=str, default='RMS',
                         choices=['L2','RMS','Max'],
                         help='norm to use in plots')
     parser.add_argument('--debug', action='store_true',
@@ -146,8 +146,8 @@ def main():
 
     # initial condition
     n_IC = np.zeros_like(x)
-    if args.IC == 'poly':
-        # polynomial initial condition (q = 1 does not satisfy left BC)
+    if args.IC == 'pow':
+        # power law initial condition (q = 1 does not satisfy left BC)
         q = args.q
         n_IC[:] = ((nL - n0) / L**q) * x**q + n0
     elif args.IC == 'const':
@@ -167,6 +167,26 @@ def main():
         plt.title('Initial Condition')
         plt.grid()
         plt.show()
+
+    # print problem setup to screen
+    print("Tango Shestakov Example:")
+    print("  Domain size L        =", L)
+    print("  Mesh points N        =", N)
+    print("  Mesh spacing dx      =", dx)
+    print("  Initial condition    =", args.IC)
+    if args.IC == 'pow':
+        print("  IC power             =", args.q)
+    elif args.IC == 'const':
+        print("  IC const             =", args.c)
+    print("  Left boundary value  =", n0)
+    print("  Right boundary value =", nL)
+    print("  Time step size       =", dt)
+    print("  D minimum            =", args.Dmin)
+    print("  D maximum            =", args.Dmax)
+    print("  dp/dx threshold      =", args.dpdxThreshold)
+    print("  Flux power           =", p)
+    print("  Relaxation alpha     =", alpha)
+    print("  Max iterations       =", maxIterations)
 
     # set pointers for old time profile and initial guess
     n_mminus1 = n_IC
@@ -258,7 +278,24 @@ def main():
 
     # finish
 
-    nFinal  = profile
+    nFinal = profile
+
+    # print final resiudal and error
+    print("Finished:")
+    print("  Interations =", numIters)
+    if args.norm == 'L2':
+        res_nrm = np.sqrt(np.sum(residAll[-1,:]**2))
+        err_nrm = np.sqrt(np.sum(errAll[-1,:]**2))
+    elif args.norm == 'RMS':
+        res_nrm = np.sqrt(np.mean(residAll[-1,:]**2))
+        err_nrm = np.sqrt(np.mean(errAll[-1,:]**2))
+    else:
+        res_nrm = np.amax(np.abs(residAll[-1,:]))
+        err_nrm = np.amax(np.abs(errAll[-1,:]))
+    print("  Residual (" + args.norm + " norm) =", res_nrm)
+    print("  Error    (" + args.norm + " norm) =", err_nrm)
+
+    # iteration range to plot
     iters   = np.arange(0, numIters)     # initial to end - 1 (length numIters)
     itersp1 = np.arange(0, numIters + 1) # initial to end     (length numIters + 1)
 
@@ -302,9 +339,9 @@ def main():
         # plot residual norm history
         res_nrm = np.zeros((numIters,1))
         for i in iters:
-            if args.plotnorm == 'L2':
+            if args.norm == 'L2':
                 res_nrm[i] = np.sqrt(np.sum(residAll[i,:]**2))  # L2
-            elif args.plotnorm == 'RMS':
+            elif args.norm == 'RMS':
                 res_nrm[i] = np.sqrt(np.mean(residAll[i,:]**2)) # RMS
             else:
                 res_nrm[i] = np.amax(np.abs(residAll[i,:]))     # Max
@@ -312,9 +349,9 @@ def main():
         plt.figure()
         plt.semilogy(iters, res_nrm, nonposy='clip')
         plt.xlabel('x')
-        if args.plotnorm == 'L2':
+        if args.norm == 'L2':
             plt.ylabel('$||R||_{L2}$')
-        elif args.plotnorm == 'RMS':
+        elif args.norm == 'RMS':
             plt.ylabel('$||R||_{RMS}$')
         else:
             plt.ylabel('$||R||_{max}$')
@@ -333,9 +370,9 @@ def main():
         # plot error norm history
         err_nrm = np.zeros((numIters + 1, 1))
         for i in itersp1:
-            if args.plotnorm == 'L2':
+            if args.norm == 'L2':
                 err_nrm[i] = np.sqrt(np.sum(errAll[i,:]**2))  # L2
-            elif args.plotnorm == 'RMS':
+            elif args.norm == 'RMS':
                 err_nrm[i] = np.sqrt(np.mean(errAll[i,:]**2)) # RMS
             else:
                 err_nrm[i] = np.amax(np.abs(errAll[i,:]))     # Max
@@ -343,9 +380,9 @@ def main():
         plt.figure()
         plt.semilogy(itersp1, err_nrm, nonposy='clip')
         plt.xlabel('x')
-        if args.plotnorm == 'L2':
+        if args.norm == 'L2':
             plt.ylabel('$||n - n_{ss}||_{L2}$')
-        elif args.plotnorm == 'RMS':
+        elif args.norm == 'RMS':
             plt.ylabel('$||n - n_{ss}||_{RMS}$')
         else:
             plt.ylabel('$||n - n_{ss}||_{max}$')
