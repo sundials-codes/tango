@@ -78,7 +78,9 @@ def main():
     parser = argparse.ArgumentParser(description='Run Shestakov example')
 
     parser.add_argument('--alpha', type=float, default=0.1,
-                        help='Relaxation parameter')
+                        help='Relaxation parameter for diffusion')
+    parser.add_argument('--beta', type=float, default=1.0,
+                        help='Relaxation parameter for profile')
     parser.add_argument('--p', type=float, default=2.0,
                         help='power for analytic flux')
     parser.add_argument('--L', type=float, default=1.0,
@@ -126,6 +128,7 @@ def main():
     maxIterations = args.maxiters
     numIters = maxIterations
     alpha = args.alpha  # relaxation parameter on the effective diffusion coefficient
+    beta  = args.beta   # relaxation perameter on the profile
     p = args.p          # power for analytic flux
 
     # problem setup
@@ -186,11 +189,13 @@ def main():
     print("  dp/dx threshold      =", args.dpdxThreshold)
     print("  Flux power           =", p)
     print("  Relaxation alpha     =", alpha)
+    print("  Relaxation beta      =", beta)
     print("  Max iterations       =", maxIterations)
 
-    # create and fill arrays for old time profile and initial guess
-    n_mminus1 = np.copy(n_IC)
-    profile   = np.copy(n_IC)
+    # create and fill arrays for old time, old iteration, and current profile
+    n_mminus1   = np.copy(n_IC)
+    profile_old = np.copy(n_IC)
+    profile     = np.copy(n_IC)
 
     # instantiate flux model
     fluxModel = FluxModel(dx, p=p)
@@ -263,8 +268,14 @@ def main():
 
         wrmsResidHistory[iterationNumber] = wrmsResid
 
+        # save old profile
+        profile_old[:] = profile[:]
+
         # solve matrix equation for new profile
         profile[:] = HToMatrixFD.solve(A, B, C, f)
+
+        # relax profile
+        profile = beta * profile + (1.0 - beta) * profile_old
 
         # save new profile and compute new error
         nAll[iterationNumber+1, :]   = profile
