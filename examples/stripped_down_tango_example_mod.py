@@ -214,6 +214,7 @@ def main():
     D_EWMAAll = np.zeros_like(fluxAll)
     c_EWMAAll = np.zeros_like(fluxAll)
     residAll  = np.zeros_like(fluxAll)
+    FAll      = np.zeros_like(fluxAll)
 
     wrmsResidHistory = np.zeros(maxIterations)
 
@@ -274,8 +275,11 @@ def main():
         # save old profile
         profile_old[:] = profile[:]
 
-        # solve matrix equation for new profile
+        # solve matrix equation for new profile n_{i+1} = G(n_i)
         profile[:] = HToMatrixFD.solve(A, B, C, f)
+
+        # compute F_i = G(n_i) - n_i
+        FAll[iterationNumber, :] = profile - profile_old
 
         # relax profile
         profile = beta * profile + (1.0 - beta) * profile_old
@@ -345,6 +349,8 @@ def main():
         plt.legend(loc='best')
         plt.grid()
 
+        # ----------------------------------------
+
         # plot final absolute residual
         res = np.abs(residAll[-1,:])
         plt.figure()
@@ -376,6 +382,8 @@ def main():
         plt.title('Residual History')
         plt.grid()
 
+        # ----------------------------------------
+
         # plot final absolute error
         err = np.abs(errAll[-1,:])
         plt.figure()
@@ -405,6 +413,39 @@ def main():
         else:
             plt.ylabel('$||n - n_{ss}||_{max}$')
         plt.title('Error History')
+        plt.grid()
+
+        # ----------------------------------------
+
+        # plot final absolute F
+        resF = np.abs(FAll[-1,:])
+        plt.figure()
+        plt.semilogy(x, resF)
+        plt.xlabel('x')
+        plt.ylabel('$\|F_i = G(n_i) - n_i\|$')
+        plt.title('Final Absolute F Resiudal')
+        plt.grid()
+
+        # plot F norm history
+        resF_nrm = np.zeros((numIters, 1))
+        for i in iters:
+            if args.norm == 'L2':
+                resF_nrm[i] = np.sqrt(np.sum(FAll[i,:]**2))  # L2
+            elif args.norm == 'RMS':
+                resF_nrm[i] = np.sqrt(np.mean(FAll[i,:]**2)) # RMS
+            else:
+                resF_nrm[i] = np.amax(np.abs(FAll[i,:]))     # Max
+
+        plt.figure()
+        plt.semilogy(iters, resF_nrm, nonposy='clip')
+        plt.xlabel('x')
+        if args.norm == 'L2':
+            plt.ylabel('$||F_i = G(n_i) - n_i||_{L2}$')
+        elif args.norm == 'RMS':
+            plt.ylabel('$||F_i = G(n_i) - n_i||_{RMS}$')
+        else:
+            plt.ylabel('$||F_i = G(n_i) - n_i||_{max}$')
+        plt.title('F Residual History')
         plt.grid()
 
     if (args.historyplots):
