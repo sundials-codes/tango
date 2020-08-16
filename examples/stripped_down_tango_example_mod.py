@@ -137,6 +137,8 @@ def main():
                         help='enable flux, D, and c history plots')
     parser.add_argument('--historyrange', type=int, nargs=2, default=[0, 200],
                         help='iterations to use in history plots (inclusive range)')
+    parser.add_argument('--refidx', type=int, nargs=3, default=[100, 50, 10],
+                        help='index to use for convergence reference line (resid, F resid, err)')
 
     # output options
     parser.add_argument('--outputdir', type=str, default='output',
@@ -364,7 +366,7 @@ def main():
 
         # plot final solution
         plt.figure()
-        plt.plot(x, nFinal, 'b-', label='numerical solution')
+        plt.plot(x, nFinal, label='numerical solution')
         plt.plot(x, nss, 'k--', label='analytic solution')
         plt.xlabel('x')
         plt.ylabel('n')
@@ -384,8 +386,27 @@ def main():
             else:
                 res_nrm[i] = np.amax(np.abs(residAll[i,:]))     # Max
 
+        # estimate convergence constant
+        idx = args.refidx[0]
+        c   = res_nrm[idx] / res_nrm[idx-1]
+
+        # min to cutoff ref plot
+        min_ref = np.amin(res_nrm) / 2.0
+
+        # create convergence rate reference
+        res_ref = np.zeros((numIters,1))
+        res_ref[0] = (5.0 * res_nrm[idx]) / c**idx
+        plt_idx = -1
+        for i in range(1, numIters):
+            res_ref[i] = c * res_ref[i-1]
+            if res_ref[i] < min_ref:
+                plt_idx = i
+                break
+
         plt.figure()
-        plt.semilogy(iters, res_nrm, nonposy='clip')
+        plt.semilogy(iters, res_nrm, nonposy='clip', label='residual')
+        plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--', nonposy='clip', label='1st order')
+
         plt.xlabel('Iteration')
         if args.norm == 'L2':
             plt.ylabel('$||R||_{L2}$')
@@ -394,6 +415,7 @@ def main():
         else:
             plt.ylabel('$||R||_{max}$')
         plt.title('Residual History')
+        plt.legend(loc='best')
         plt.grid()
 
         # plot F residual norm history
@@ -406,8 +428,26 @@ def main():
             else:
                 resF_nrm[i] = np.amax(np.abs(FAll[i,:]))     # Max
 
+        # estimate convergence constant
+        idx = args.refidx[1]
+        c   = resF_nrm[idx] / resF_nrm[idx-1]
+
+        # min to cutoff ref plot
+        min_ref = np.amin(resF_nrm) / 2.0
+
+        # create convergence rate reference
+        resF_ref = np.zeros((numIters,1))
+        resF_ref[0] = (5.0 * resF_nrm[idx]) / c**idx
+        plt_idx = -1
+        for i in range(1, numIters):
+            resF_ref[i] = c * resF_ref[i-1]
+            if (resF_ref[i] < min_ref):
+                plt_idx = i
+                break
+
         plt.figure()
-        plt.semilogy(iters, resF_nrm, nonposy='clip')
+        plt.semilogy(iters, resF_nrm, nonposy='clip', label='residual')
+        plt.semilogy(iters[:plt_idx+1], resF_ref[:plt_idx+1], 'k--', nonposy='clip', label='1st order')
         plt.xlabel('Iteration')
         if args.norm == 'L2':
             plt.ylabel('$||F_i = G(n_i) - n_i||_{L2}$')
@@ -416,6 +456,7 @@ def main():
         else:
             plt.ylabel('$||F_i = G(n_i) - n_i||_{max}$')
         plt.title('F Residual History')
+        plt.legend(loc='best')
         plt.grid()
 
         # plot error norm history
@@ -428,8 +469,26 @@ def main():
             else:
                 err_nrm[i] = np.amax(np.abs(errAll[i,:]))     # Max
 
+        # estimate convergence constant
+        idx = args.refidx[2]
+        c   = err_nrm[idx] / err_nrm[idx-1]
+
+        # min to cutoff ref plot
+        min_ref = np.amin(err_nrm) / 2.0
+
+        # create convergence rate reference
+        err_ref = np.zeros((numIters + 1,1))
+        err_ref[0] = (5.0 * err_nrm[idx]) / c**idx
+        plt_idx = -1
+        for i in range(1, numIters + 1):
+            err_ref[i] = c * err_ref[i-1]
+            if (err_ref[i] < min_ref):
+                plt_idx = i
+                break
+
         plt.figure()
-        plt.semilogy(itersp1, err_nrm, nonposy='clip')
+        plt.semilogy(itersp1, err_nrm, nonposy='clip', label='residual')
+        plt.semilogy(itersp1[:plt_idx+1], err_ref[:plt_idx+1], 'k--', nonposy='clip', label='1st order')
         plt.xlabel('Iteration')
         if args.norm == 'L2':
             plt.ylabel('$||n - n_{ss}||_{L2}$')
@@ -438,6 +497,7 @@ def main():
         else:
             plt.ylabel('$||n - n_{ss}||_{max}$')
         plt.title('Error History')
+        plt.legend(loc='best')
         plt.grid()
 
     if (args.plotfinalreserr):
