@@ -85,8 +85,17 @@ def main():
                         help='domain size [0,L]')
     parser.add_argument('--N', type=int, default=500,
                         help='number of spatial grid points')
-    parser.add_argument('--nL', type=float, default=1e-2,
-                        help='right boundary value')
+    parser.add_argument('--n0', type=float, default=2.0e-2,
+                        help='boundary value at x = 0 (left)')
+    parser.add_argument('--nL', type=float, default=1.0e-2,
+                        help='boundary value at x = L (right)')
+    parser.add_argument('--IC', type=str, default='poly',
+                        choices=['const', 'poly', 'sol'],
+                        help='set initial condition type')
+    parser.add_argument('--c', type=float, default=1.0,
+                        help='value for constant IC')
+    parser.add_argument('--q', type=float, default=1.0,
+                        help='power in polynomial IC')
     parser.add_argument('--dt', type=float, default=1e4,
                         help='time step size')
     parser.add_argument('--maxiters', type=int, default=200,
@@ -97,15 +106,17 @@ def main():
                         help='Maximum D value')
     parser.add_argument('--dpdxThreshold', type=float, default=10,
                         help='dpdx threshold value')
-    parser.add_argument('--nofinalplots', dest='finalplots',
-                        action='store_false', help='disable final plots')
-    parser.add_argument('--historyplots',
-                        action='store_true', help='enable history plots')
+    parser.add_argument('--nofinalplots', dest='finalplots', action='store_false',
+                        help='disable final plots')
+    parser.add_argument('--historyplots', action='store_true',
+                        help='enable history plots')
     parser.add_argument('--historyplotrange', type=int, nargs=2, default=[0, 200],
-                        help='enable history plots')
-    parser.add_argument('--plotnorm', type=str, default='L2',
+                        help='iteration to use in history plots (inclusive)')
+    parser.add_argument('--plotnorm', type=str, default='RMS',
                         choices=['L2','RMS','Max'],
-                        help='enable history plots')
+                        help='norm to use in plots')
+    parser.add_argument('--debug', action='store_true',
+                        help='enable debugging output')
 
 
     # parse command line args
@@ -123,16 +134,43 @@ def main():
     dx = L / (N-1)      # spatial grid size
     x = np.arange(N)*dx # location corresponding to grid points j=0, ..., N-1
 
-    # initial condition
-    n_IC = 0.02 - 0.01 * x
-    n_mminus1 = n_IC
-    profile = n_IC
-
     # boundary condition
     nL = args.nL
+    n0 = args.n0
 
     # time step  (1e4 is effectively infinite)
     dt = args.dt
+
+    # compute the analytic steady state solution
+    nss = steady_state_solution(x, nL, p=p, L=L)
+
+    # initial condition
+    n_IC = np.zeros_like(x)
+    if args.IC == 'poly':
+        # polynomial initial condition (q = 1 does not satisfy left BC)
+        q = args.q
+        n_IC[:] = ((nL - n0) / L**q) * x**q + n0
+    elif args.IC == 'const':
+        # constant initial condition except at the right BC
+        c = args.c
+        n_IC[:-1] = c
+        n_IC[-1]  = nL
+    else:
+        n_IC[:] = nss[:]
+
+    if args.debug:
+        # plot initial condition
+        plt.figure()
+        plt.plot(x, n_IC)
+        plt.xlabel('x')
+        plt.ylabel('n_IC')
+        plt.title('Initial Condition')
+        plt.grid()
+        plt.show()
+
+    # set pointers for old time profile and initial guess
+    n_mminus1 = n_IC
+    profile = n_IC
 
     # instantiate flux model
     fluxModel = FluxModel(dx, p=p)
@@ -157,9 +195,6 @@ def main():
     thetaParams = {'Dmin': args.Dmin, 'Dmax': args.Dmax, 'dpdxThreshold': args.dpdxThreshold}
 
     fluxSplitter = lodestro_method.FluxSplit(thetaParams)
-
-    # compute the analytic steady state solution
-    nss = steady_state_solution(x, nL, p=p, L=L)
 
     # save the initial profile and error
     nAll[0, :]   = profile
