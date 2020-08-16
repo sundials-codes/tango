@@ -78,10 +78,9 @@ def main():
 
     parser = argparse.ArgumentParser(description='Run Shestakov example')
 
-    parser.add_argument('--alpha', type=float, default=0.1,
-                        help='Relaxation parameter for diffusion')
-    parser.add_argument('--beta', type=float, default=1.0,
-                        help='Relaxation parameter for profile')
+
+
+    # problem setup options
     parser.add_argument('--p', type=float, default=2.0,
                         help='power for analytic flux')
     parser.add_argument('--L', type=float, default=1.0,
@@ -101,25 +100,49 @@ def main():
                         help='power in pow IC')
     parser.add_argument('--dt', type=float, default=1e4,
                         help='time step size')
-    parser.add_argument('--maxiters', type=int, default=200,
-                        help='maximum number iterations')
+
+    # flux splitter options
     parser.add_argument('--Dmin', type=float, default=1e-5,
                         help='Minimum D value')
     parser.add_argument('--Dmax', type=float, default=1e13,
                         help='Maximum D value')
     parser.add_argument('--dpdxThreshold', type=float, default=10,
                         help='dpdx threshold value')
-    parser.add_argument('--nofinalplots', dest='finalplots', action='store_false',
-                        help='disable final plots')
-    parser.add_argument('--historyplots', action='store_true',
-                        help='enable history plots')
-    parser.add_argument('--historyplotrange', type=int, nargs=2, default=[0, 200],
-                        help='iteration to use in history plots (inclusive)')
+
+    # relaxation and iteration options
+    parser.add_argument('--alpha', type=float, default=0.1,
+                        help='Relaxation parameter for diffusion')
+    parser.add_argument('--beta', type=float, default=1.0,
+                        help='Relaxation parameter for profile')
+    parser.add_argument('--maxiters', type=int, default=200,
+                        help='maximum number iterations')
+
+    # norm option (only for plots right now since iteration always runs to max)
     parser.add_argument('--norm', type=str, default='RMS',
                         choices=['L2','RMS','Max'],
                         help='norm to use in plots')
+
+    #  plotting options
+    parser.add_argument('--nosolutionplot', dest='plotfinalsolution', action='store_false',
+                        help='disable final solution plot')
+    parser.add_argument('--noconvplot', dest='plotconvergence', action='store_false',
+                        help='disable convergence plots')
+    parser.add_argument('--plotfinalreserr', action='store_true',
+                        help='enable final residual and error plots')
+    parser.add_argument('--plotsolutionhistory', action='store_true',
+                        help='enable solution history plot')
+    parser.add_argument('--plotreserrhistory', action='store_true',
+                        help='enable residual and error history plots')
+    parser.add_argument('--plotfluxdchistory', action='store_true',
+                        help='enable flux, D, and c history plots')
+    parser.add_argument('--historyrange', type=int, nargs=2, default=[0, 200],
+                        help='iterations to use in history plots (inclusive range)')
+
+    # output options
     parser.add_argument('--outputdir', type=str, default='output',
                         help='output directory')
+
+    # debugging options
     parser.add_argument('--debug', action='store_true',
                         help='enable debugging output')
 
@@ -337,7 +360,7 @@ def main():
 
     # final plots
 
-    if (args.finalplots):
+    if (args.plotfinalsolution):
 
         # plot final solution
         plt.figure()
@@ -349,16 +372,7 @@ def main():
         plt.legend(loc='best')
         plt.grid()
 
-        # ----------------------------------------
-
-        # plot final absolute residual
-        res = np.abs(residAll[-1,:])
-        plt.figure()
-        plt.semilogy(x, res)
-        plt.xlabel('x')
-        plt.ylabel('$\|R\|$')
-        plt.title('Final Absolute Residual')
-        plt.grid()
+    if (args.plotconvergence):
 
         # plot residual norm history
         res_nrm = np.zeros((numIters,1))
@@ -372,7 +386,7 @@ def main():
 
         plt.figure()
         plt.semilogy(iters, res_nrm, nonposy='clip')
-        plt.xlabel('x')
+        plt.xlabel('Iteration')
         if args.norm == 'L2':
             plt.ylabel('$||R||_{L2}$')
         elif args.norm == 'RMS':
@@ -382,15 +396,26 @@ def main():
         plt.title('Residual History')
         plt.grid()
 
-        # ----------------------------------------
+        # plot F residual norm history
+        resF_nrm = np.zeros((numIters, 1))
+        for i in iters:
+            if args.norm == 'L2':
+                resF_nrm[i] = np.sqrt(np.sum(FAll[i,:]**2))  # L2
+            elif args.norm == 'RMS':
+                resF_nrm[i] = np.sqrt(np.mean(FAll[i,:]**2)) # RMS
+            else:
+                resF_nrm[i] = np.amax(np.abs(FAll[i,:]))     # Max
 
-        # plot final absolute error
-        err = np.abs(errAll[-1,:])
         plt.figure()
-        plt.semilogy(x, err)
-        plt.xlabel('x')
-        plt.ylabel('$\|n - n_{ss}\|$')
-        plt.title('Final Absolute Error')
+        plt.semilogy(iters, resF_nrm, nonposy='clip')
+        plt.xlabel('Iteration')
+        if args.norm == 'L2':
+            plt.ylabel('$||F_i = G(n_i) - n_i||_{L2}$')
+        elif args.norm == 'RMS':
+            plt.ylabel('$||F_i = G(n_i) - n_i||_{RMS}$')
+        else:
+            plt.ylabel('$||F_i = G(n_i) - n_i||_{max}$')
+        plt.title('F Residual History')
         plt.grid()
 
         # plot error norm history
@@ -405,7 +430,7 @@ def main():
 
         plt.figure()
         plt.semilogy(itersp1, err_nrm, nonposy='clip')
-        plt.xlabel('x')
+        plt.xlabel('Iteration')
         if args.norm == 'L2':
             plt.ylabel('$||n - n_{ss}||_{L2}$')
         elif args.norm == 'RMS':
@@ -415,9 +440,18 @@ def main():
         plt.title('Error History')
         plt.grid()
 
-        # ----------------------------------------
+    if (args.plotfinalreserr):
 
-        # plot final absolute F
+        # plot final absolute residual
+        res = np.abs(residAll[-1,:])
+        plt.figure()
+        plt.semilogy(x, res)
+        plt.xlabel('x')
+        plt.ylabel('$\|R\|$')
+        plt.title('Final Absolute Residual')
+        plt.grid()
+
+        # plot final absolute F residual
         resF = np.abs(FAll[-1,:])
         plt.figure()
         plt.semilogy(x, resF)
@@ -426,41 +460,30 @@ def main():
         plt.title('Final Absolute F Resiudal')
         plt.grid()
 
-        # plot F norm history
-        resF_nrm = np.zeros((numIters, 1))
-        for i in iters:
-            if args.norm == 'L2':
-                resF_nrm[i] = np.sqrt(np.sum(FAll[i,:]**2))  # L2
-            elif args.norm == 'RMS':
-                resF_nrm[i] = np.sqrt(np.mean(FAll[i,:]**2)) # RMS
-            else:
-                resF_nrm[i] = np.amax(np.abs(FAll[i,:]))     # Max
-
+        # plot final absolute error
+        err = np.abs(errAll[-1,:])
         plt.figure()
-        plt.semilogy(iters, resF_nrm, nonposy='clip')
+        plt.semilogy(x, err)
         plt.xlabel('x')
-        if args.norm == 'L2':
-            plt.ylabel('$||F_i = G(n_i) - n_i||_{L2}$')
-        elif args.norm == 'RMS':
-            plt.ylabel('$||F_i = G(n_i) - n_i||_{RMS}$')
-        else:
-            plt.ylabel('$||F_i = G(n_i) - n_i||_{max}$')
-        plt.title('F Residual History')
+        plt.ylabel('$\|n - n_{ss}\|$')
+        plt.title('Final Absolute Error')
         plt.grid()
 
-    if (args.historyplots):
 
-        min_iter = max(args.historyplotrange[0], 0)
-        max_iter = min(args.historyplotrange[1], maxIterations)
-        num_iter = max_iter - min_iter + 1;
+    # history range to plot
+    min_iter = max(args.historyrange[0], 0)
+    max_iter = min(args.historyrange[1], maxIterations)
+    num_iter = max_iter - min_iter + 1;
 
-        # set color cycle for lines
-        if (num_iter > 20):
-            mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.plasma(np.linspace(0, 1, num_iter)))
-        elif (num_iter > 10):
-            mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab20(np.linspace(0, 1, num_iter)))
-        else:
-            mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab10(np.linspace(0, 1, num_iter)))
+    # set color cycle history plot lines
+    if (num_iter > 20):
+        mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.plasma(np.linspace(0, 1, num_iter)))
+    elif (num_iter > 10):
+        mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab20(np.linspace(0, 1, num_iter)))
+    else:
+        mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab10(np.linspace(0, 1, num_iter)))
+
+    if (args.plotsolutionhistory):
 
         # plot solution history
         fig, ax = plt.subplots()
@@ -473,6 +496,8 @@ def main():
         plt.title('Solution History')
         plt.grid()
 
+    if (args.plotreserrhistory):
+
         # plot residual history
         fig, ax = plt.subplots()
         for i in range(min_iter, min(max_iter + 1, maxIterations)):
@@ -482,6 +507,17 @@ def main():
         plt.xlabel('x')
         plt.ylabel('$\|R\|$')
         plt.title('Absolute Residual History')
+        plt.grid()
+
+        # plot F residual history
+        fig, ax = plt.subplots()
+        for i in range(min_iter, min(max_iter + 1, maxIterations)):
+            ax.semilogy(x, np.abs(FAll[i]), label=i)
+        ax.semilogy(x, np.abs(FAll[maxIterations - 1]), 'k--', label='final')
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        plt.xlabel('x')
+        plt.ylabel('$\|F_i = G(n_i) - n_i\|$')
+        plt.title('Absolute F Residual History')
         plt.grid()
 
         # plot absolute error history
@@ -494,6 +530,8 @@ def main():
         plt.ylabel('$\|n - n_{ss}\|$')
         plt.title('Absolute Error History')
         plt.grid()
+
+    if (args.plotfluxdchistory):
 
         # plot flux history
         fig, ax = plt.subplots()
@@ -552,7 +590,13 @@ def main():
         plt.title('Relaxed c History')
         plt.grid()
 
-    if (args.finalplots or args.historyplots):
+    # display all plots
+    if (args.plotfinalsolution or
+        args.plotconvergence or
+        args.plotfinalreserr or
+        args.plotsolutionhistory or
+        args.plotreserrhistory or
+        args.plotfluxdchistory):
 
         # show plots
         plt.show()
