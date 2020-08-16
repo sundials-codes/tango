@@ -188,9 +188,9 @@ def main():
     print("  Relaxation alpha     =", alpha)
     print("  Max iterations       =", maxIterations)
 
-    # set pointers for old time profile and initial guess
-    n_mminus1 = n_IC
-    profile = n_IC
+    # create and fill arrays for old time profile and initial guess
+    n_mminus1 = np.copy(n_IC)
+    profile   = np.copy(n_IC)
 
     # instantiate flux model
     fluxModel = FluxModel(dx, p=p)
@@ -264,7 +264,7 @@ def main():
         wrmsResidHistory[iterationNumber] = wrmsResid
 
         # solve matrix equation for new profile
-        profile = HToMatrixFD.solve(A, B, C, f)
+        profile[:] = HToMatrixFD.solve(A, B, C, f)
 
         # save new profile and compute new error
         nAll[iterationNumber+1, :]   = profile
@@ -278,7 +278,7 @@ def main():
 
     # finish
 
-    nFinal = profile
+    nFinal = np.copy(profile)
 
     # print final resiudal and error
     print("Finished:")
