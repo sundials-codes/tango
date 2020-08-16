@@ -15,6 +15,7 @@ state solution which can be compared with the numerically found solution.
 #sys.path.append("/path/to/tango")
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from tango import derivatives
@@ -96,8 +97,15 @@ def main():
                         help='Maximum D value')
     parser.add_argument('--dpdxThreshold', type=float, default=10,
                         help='dpdx threshold value')
-    parser.add_argument('--noplots', dest='finalplot',
+    parser.add_argument('--nofinalplots', dest='finalplots',
                         action='store_false', help='disable final plots')
+    parser.add_argument('--historyplots',
+                        action='store_true', help='enable history plots')
+    parser.add_argument('--historyplotrange', type=int, nargs=2, default=[0, 200],
+                        help='enable history plots')
+    parser.add_argument('--plotnorm', type=str, default='L2',
+                        choices=['L2','RMS','Max'],
+                        help='enable history plots')
 
 
     # parse command line args
@@ -105,6 +113,7 @@ def main():
 
     #### create stuff
     maxIterations = args.maxiters
+    numIters = maxIterations
     alpha = args.alpha  # relaxation parameter on the effective diffusion coefficient
     p = args.p          # power for analytic flux
 
@@ -116,23 +125,31 @@ def main():
 
     # initial condition
     n_IC = 0.02 - 0.01 * x
-    #n_IC = nSave + .0001
     n_mminus1 = n_IC
     profile = n_IC
 
     # boundary condition
     nL = args.nL
 
-    # time step  (effectively infinite)
+    # time step  (1e4 is effectively infinite)
     dt = args.dt
 
     # instantiate flux model
     fluxModel = FluxModel(dx, p=p)
 
-    # initialize data storage
-    nAll = np.zeros((maxIterations, N))
-    fluxAll = np.zeros_like(nAll)
-    residualHistory = np.zeros(maxIterations)
+    # initialize data storage for full history (initial to end)
+    nAll   = np.zeros((maxIterations+1, N))
+    errAll = np.zeros_like(nAll)
+
+    # initialize data storage for history excluding last iteration (initial to end - 1)
+    fluxAll   = np.zeros((maxIterations, N))
+    DAll      = np.zeros_like(fluxAll)
+    cAll      = np.zeros_like(fluxAll)
+    D_EWMAAll = np.zeros_like(fluxAll)
+    c_EWMAAll = np.zeros_like(fluxAll)
+    residAll  = np.zeros_like(fluxAll)
+
+    wrmsResidHistory = np.zeros(maxIterations)
 
     # initialize FluxSplitter.
     # for many problems, the exact value of these parameters doesn't matter too much.
@@ -141,12 +158,17 @@ def main():
 
     fluxSplitter = lodestro_method.FluxSplit(thetaParams)
 
+    # compute the analytic steady state solution
+    nss = steady_state_solution(x, nL, p=p, L=L)
+
+    # save the initial profile and error
+    nAll[0, :]   = profile
+    errAll[0, :] = profile - nss
 
     for iterationNumber in np.arange(0, maxIterations):
-        # get next turbulent flux
-        flux = fluxModel.get_flux(profile)
 
-        # (put any inner iteration loop here)
+        # get turbulent flux
+        flux = fluxModel.get_flux(profile)
 
         # transform flux into effective transport coefficients.  H2=D, H3=-c
         # [use flux split class from lodestro_method]
@@ -163,7 +185,6 @@ def main():
         H2Turb = D_EWMA
         H3 = -c_EWMA
 
-
         # get H's for all the others (H1, H2, H7).  H's represent terms in the transport equation
         H1 = np.ones_like(x)
         H7 = source(x)
@@ -175,35 +196,56 @@ def main():
 
         # see fieldgroups.calculate_residual() for additional information on the residual calculation
         resid = A*np.concatenate((profile[1:], np.zeros(1))) + B*profile + C*np.concatenate((np.zeros(1), profile[:-1])) - f
-        resid = resid / np.max(np.abs(f))  # normalize the residual
-        rmsResid = np.sqrt( np.mean( resid**2 ))  # take an rms characterization of residual
-        residualHistory[iterationNumber] = rmsResid
+        wrmsResid = np.sqrt( np.mean( (resid / np.max(np.abs(f)))**2 ) )  # compute normalized rms norm
+
+        # save data for plots
+        fluxAll[iterationNumber,:]   = flux
+        DAll[iterationNumber,:]      = D
+        cAll[iterationNumber,:]      = c
+        D_EWMAAll[iterationNumber,:] = D_EWMA
+        c_EWMAAll[iterationNumber,:] = c_EWMA
+        residAll[iterationNumber,:]  = resid
+
+        wrmsResidHistory[iterationNumber] = wrmsResid
 
         # solve matrix equation for new profile
         profile = HToMatrixFD.solve(A, B, C, f)
 
-        # save data
-        nAll[iterationNumber, :] = profile
-        fluxAll[iterationNumber, :] = flux
+        # save new profile and compute new error
+        nAll[iterationNumber+1, :]   = profile
+        errAll[iterationNumber+1, :] = profile - nss
 
         # check
         if np.any(profile < 0) == True:
             print(f'error.  negative value detected in profile at l={iterationNumber}')
+            numIters=iterationNumber + 1
             break
-
 
     # finish
 
-    nFinal = profile
-    iters = np.arange(0, maxIterations)
+    nFinal  = profile
+    iters   = np.arange(0, numIters)     # initial to end - 1 (length numIters)
+    itersp1 = np.arange(0, numIters + 1) # initial to end     (length numIters + 1)
 
+    # write history to file
 
-    if (args.finalplot):
+    # full history
+    np.savetxt('n_history.txt', nAll)
+    np.savetxt('err_history.txt', nAll)
 
-        # plot the last iteration of density --- presumably the correct solution, if converged
-        #  Also plot the analytic steady state solution
-        nss = steady_state_solution(x, nL, p=p)
+    # up to but not including last iteration
+    np.savetxt('flux_history.txt',   fluxAll)
+    np.savetxt('D_history.txt',      DAll)
+    np.savetxt('c_history.txt',      cAll)
+    np.savetxt('D_EWMA_history.txt', D_EWMAAll)
+    np.savetxt('c_EWMA_history.txt', c_EWMAAll)
+    np.savetxt('resid_history.txt',  residAll)
 
+    # final plots
+
+    if (args.finalplots):
+
+        # plot final solution
         plt.figure()
         plt.plot(x, nFinal, 'b-', label='numerical solution')
         plt.plot(x, nss, 'k--', label='analytic solution')
@@ -212,52 +254,178 @@ def main():
         plt.title('Final Solution')
         plt.legend(loc='best')
         plt.grid()
-        plt.show()
 
-        # plot residual
+        # plot final absolute residual
+        res = np.abs(residAll[-1,:])
         plt.figure()
-        plt.semilogy(iters, residualHistory)
-        plt.xlabel('iteration number')
-        plt.ylabel('Normalized RMS Norm of Residual')
-        plt.title('Final Residual')
+        plt.semilogy(x, res)
+        plt.xlabel('x')
+        plt.ylabel('$\|R\|$')
+        plt.title('Final Absolute Residual')
         plt.grid()
-        plt.show()
 
-        # plot absolute error
-        err = np.abs(nFinal - nss)
+        # plot residual norm history
+        res_nrm = np.zeros((numIters,1))
+        for i in iters:
+            if args.plotnorm == 'L2':
+                res_nrm[i] = np.sqrt(np.sum(residAll[i,:]**2))  # L2
+            elif args.plotnorm == 'RMS':
+                res_nrm[i] = np.sqrt(np.mean(residAll[i,:]**2)) # RMS
+            else:
+                res_nrm[i] = np.amax(np.abs(residAll[i,:]))     # Max
+
         plt.figure()
-        plt.semilogy(x, err, 'b-', label='error')
+        plt.semilogy(iters, res_nrm, nonposy='clip')
+        plt.xlabel('x')
+        if args.plotnorm == 'L2':
+            plt.ylabel('$||R||_{L2}$')
+        elif args.plotnorm == 'RMS':
+            plt.ylabel('$||R||_{RMS}$')
+        else:
+            plt.ylabel('$||R||_{max}$')
+        plt.title('Residual History')
+        plt.grid()
+
+        # plot final absolute error
+        err = np.abs(errAll[-1,:])
+        plt.figure()
+        plt.semilogy(x, err)
         plt.xlabel('x')
         plt.ylabel('$\|n - n_{ss}\|$')
-        plt.title('Absolute Error')
-        plt.legend(loc='best')
+        plt.title('Final Absolute Error')
         plt.grid()
+
+        # plot error norm history
+        err_nrm = np.zeros((numIters + 1, 1))
+        for i in itersp1:
+            if args.plotnorm == 'L2':
+                err_nrm[i] = np.sqrt(np.sum(errAll[i,:]**2))  # L2
+            elif args.plotnorm == 'RMS':
+                err_nrm[i] = np.sqrt(np.mean(errAll[i,:]**2)) # RMS
+            else:
+                err_nrm[i] = np.amax(np.abs(errAll[i,:]))     # Max
+
+        plt.figure()
+        plt.semilogy(itersp1, err_nrm, nonposy='clip')
+        plt.xlabel('x')
+        if args.plotnorm == 'L2':
+            plt.ylabel('$||n - n_{ss}||_{L2}$')
+        elif args.plotnorm == 'RMS':
+            plt.ylabel('$||n - n_{ss}||_{RMS}$')
+        else:
+            plt.ylabel('$||n - n_{ss}||_{max}$')
+        plt.title('Error History')
+        plt.grid()
+
+    if (args.historyplots):
+
+        min_iter = max(args.historyplotrange[0], 0)
+        max_iter = min(args.historyplotrange[1], maxIterations)
+        num_iter = max_iter - min_iter + 1;
+
+        # set color cycle for lines
+        if (num_iter > 20):
+            mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.plasma(np.linspace(0, 1, num_iter)))
+        elif (num_iter > 10):
+            mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab20(np.linspace(0, 1, num_iter)))
+        else:
+            mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab10(np.linspace(0, 1, num_iter)))
+
+        # plot solution history
+        fig, ax = plt.subplots()
+        for i in range(min_iter, max_iter + 1):
+            ax.plot(x, nAll[i], label=i)
+        plt.plot(x, nss, 'k--', label='analytic solution')
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        plt.xlabel('x')
+        plt.ylabel('n')
+        plt.title('Solution History')
+        plt.grid()
+
+        # plot residual history
+        fig, ax = plt.subplots()
+        for i in range(min_iter, min(max_iter + 1, maxIterations)):
+            ax.semilogy(x, np.abs(residAll[i]), label=i)
+        ax.semilogy(x, np.abs(residAll[maxIterations - 1]), 'k--', label='final')
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        plt.xlabel('x')
+        plt.ylabel('$\|R\|$')
+        plt.title('Absolute Residual History')
+        plt.grid()
+
+        # plot absolute error history
+        fig, ax = plt.subplots()
+        for i in range(min_iter, max_iter + 1):
+            ax.semilogy(x, np.abs(errAll[i]), label=i)
+        ax.semilogy(x, np.abs(errAll[maxIterations]), 'k--', label='final')
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        plt.xlabel('x')
+        plt.ylabel('$\|n - n_{ss}\|$')
+        plt.title('Absolute Error History')
+        plt.grid()
+
+        # plot flux history
+        fig, ax = plt.subplots()
+        for i in range(min_iter, min(max_iter + 1, maxIterations)):
+            ax.semilogy(x, fluxAll[i], label=i)
+        ax.semilogy(x, fluxAll[maxIterations - 1], 'k--', label='final')
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        plt.xlabel('x')
+        plt.ylabel('flux')
+        plt.title('Flux History')
+        plt.grid()
+
+        # plot D history
+        fig, ax = plt.subplots()
+        for i in range(min_iter, min(max_iter + 1, maxIterations)):
+            ax.semilogy(x, DAll[i], label=i)
+        ax.semilogy(x, DAll[maxIterations - 1], 'k--', label='final')
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        plt.xlabel('x')
+        plt.ylabel('D')
+        plt.title('D History')
+        plt.grid()
+
+        # plot D_EWMA history
+        fig, ax = plt.subplots()
+        for i in range(min_iter, min(max_iter + 1, maxIterations)):
+            ax.semilogy(x, D_EWMAAll[i], label=i)
+        ax.semilogy(x, D_EWMAAll[maxIterations - 1], 'k--', label='final')
+        ax.semilogy(x, DAll[maxIterations - 1], 'r:', label='final (no relaxation)')
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        plt.xlabel('x')
+        plt.ylabel('D')
+        plt.title('Relaxed D History')
+        plt.grid()
+
+        # plot c history
+        fig, ax = plt.subplots()
+        for i in range(min_iter, min(max_iter + 1, maxIterations)):
+            ax.semilogy(x, cAll[i], label=i)
+        ax.semilogy(x, cAll[maxIterations - 1], 'k--', label='final')
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        plt.xlabel('x')
+        plt.ylabel('c')
+        plt.title('c History')
+        plt.grid()
+
+        # plot c_EMWA history
+        fig, ax = plt.subplots()
+        for i in range(min_iter, min(max_iter + 1, maxIterations)):
+            ax.semilogy(x, c_EWMAAll[i], label=i)
+        ax.semilogy(x, c_EWMAAll[maxIterations - 1], 'k--', label='final')
+        ax.semilogy(x, cAll[maxIterations - 1], 'r:', label='final (no relaxation)')
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        plt.xlabel('x')
+        plt.ylabel('c')
+        plt.title('Relaxed c History')
+        plt.grid()
+
+    if (args.finalplots or args.historyplots):
+
+        # show plots
         plt.show()
 
-
-        # plots of first few iterations if desired
-        #plt.figure()
-        #plt.plot(x, nAll[0], 'k--')
-        #plt.plot(x, nAll[1], 'r--')
-        #plt.plot(x, nAll[2], 'b--')
-        #plt.plot(x, nAll[3], 'k-')
-        #plt.plot(x, nAll[4], 'r-')
-        #plt.plot(x, nAll[5], 'b-')
-        #plt.xlabel('x')
-        #plt.title('n')
-
-
-        #plt.figure()
-        #plt.plot(x, fluxAll[0], 'k--')
-        #plt.plot(x, fluxAll[1], 'r--')
-        #plt.plot(x, fluxAll[2], 'b--')
-        #plt.plot(x, fluxAll[3], 'k-')
-        #plt.plot(x, fluxAll[4], 'r-')
-        #plt.plot(x, fluxAll[5], 'b-')
-        #plt.xlabel('x')
-        #plt.title('flux')
-
-        #nSave = nFinal
 
 
 # ****** run main ****** #
