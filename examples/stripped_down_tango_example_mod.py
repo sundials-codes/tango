@@ -73,6 +73,7 @@ class FluxModel:
 # ****** Main ***** #
 def main():
 
+    import os
     import argparse
 
     parser = argparse.ArgumentParser(description='Run Shestakov example')
@@ -117,6 +118,8 @@ def main():
     parser.add_argument('--norm', type=str, default='RMS',
                         choices=['L2','RMS','Max'],
                         help='norm to use in plots')
+    parser.add_argument('--outputdir', type=str, default='output',
+                        help='output directory')
     parser.add_argument('--debug', action='store_true',
                         help='enable debugging output')
 
@@ -312,17 +315,21 @@ def main():
 
     # write history to file
 
+    outdir = args.outputdir
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
     # full history
-    np.savetxt('n_history.txt', nAll)
-    np.savetxt('err_history.txt', nAll)
+    np.savetxt(outdir + '/n_history.txt', nAll)
+    np.savetxt(outdir + '/err_history.txt', nAll)
 
     # up to but not including last iteration
-    np.savetxt('flux_history.txt',   fluxAll)
-    np.savetxt('D_history.txt',      DAll)
-    np.savetxt('c_history.txt',      cAll)
-    np.savetxt('D_EWMA_history.txt', D_EWMAAll)
-    np.savetxt('c_EWMA_history.txt', c_EWMAAll)
-    np.savetxt('resid_history.txt',  residAll)
+    np.savetxt(outdir + '/flux_history.txt',   fluxAll)
+    np.savetxt(outdir + '/D_history.txt',      DAll)
+    np.savetxt(outdir + '/c_history.txt',      cAll)
+    np.savetxt(outdir + '/D_EWMA_history.txt', D_EWMAAll)
+    np.savetxt(outdir + '/c_EWMA_history.txt', c_EWMAAll)
+    np.savetxt(outdir + '/resid_history.txt',  residAll)
 
     # final plots
 

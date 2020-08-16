@@ -11,3 +11,6 @@ nosetests.xml
 coverage.xml
 *,cover
 .hypothesis/
+
+# Example output
+examples/output

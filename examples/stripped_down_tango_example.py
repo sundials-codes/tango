@@ -13,6 +13,7 @@ state solution which can be compared with the numerically found solution.
 #import sys
 #sys.path.append("/path/to/tango")
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -205,5 +206,8 @@ plt.show()
 
 #nSave = nFinal
 
+outdir = "output"
+if not os.path.exists(outdir):
+    os.makedirs(outdir)
 nAll = np.vstack((n_IC, nAll))
-np.savetxt('n_history_orig.txt', nAll)
+np.savetxt(outdir + '/n_history_orig.txt', nAll)
