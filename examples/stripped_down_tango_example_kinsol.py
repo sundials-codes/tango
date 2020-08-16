@@ -92,7 +92,7 @@ def main():
     parser.add_argument('--nL', type=float, default=1.0e-2,
                         help='boundary value at x = L (right)')
     parser.add_argument('--IC', type=str, default='pow',
-                        choices=['powt', 'const', 'sol'],
+                        choices=['pow', 'const', 'sol'],
                         help='set initial condition type')
     parser.add_argument('--c', type=float, default=1.0,
                         help='value for constant IC')
