@@ -204,3 +204,6 @@ plt.show()
 #plt.title('flux')
 
 #nSave = nFinal
+
+nAll = np.vstack((n_IC, nAll))
+np.savetxt('n_history_orig.txt', nAll)
