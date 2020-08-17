@@ -404,8 +404,8 @@ def main():
                 break
 
         plt.figure()
-        plt.semilogy(iters, res_nrm, nonposy='clip', label='residual')
-        plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--', nonposy='clip', label='1st order')
+        plt.semilogy(iters, res_nrm, nonpositive='clip', label='residual')
+        plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
 
         plt.xlabel('Iteration')
         if args.norm == 'L2':
@@ -446,8 +446,8 @@ def main():
                 break
 
         plt.figure()
-        plt.semilogy(iters, resF_nrm, nonposy='clip', label='residual')
-        plt.semilogy(iters[:plt_idx+1], resF_ref[:plt_idx+1], 'k--', nonposy='clip', label='1st order')
+        plt.semilogy(iters, resF_nrm, nonpositive='clip', label='residual')
+        plt.semilogy(iters[:plt_idx+1], resF_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
         plt.xlabel('Iteration')
         if args.norm == 'L2':
             plt.ylabel('$||F_i = G(n_i) - n_i||_{L2}$')
@@ -487,8 +487,8 @@ def main():
                 break
 
         plt.figure()
-        plt.semilogy(itersp1, err_nrm, nonposy='clip', label='residual')
-        plt.semilogy(itersp1[:plt_idx+1], err_ref[:plt_idx+1], 'k--', nonposy='clip', label='1st order')
+        plt.semilogy(itersp1, err_nrm, nonpositive='clip', label='residual')
+        plt.semilogy(itersp1[:plt_idx+1], err_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
         plt.xlabel('Iteration')
         if args.norm == 'L2':
             plt.ylabel('$||n - n_{ss}||_{L2}$')
