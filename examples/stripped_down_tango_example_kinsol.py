@@ -22,6 +22,7 @@ from tango import derivatives
 from tango import HToMatrixFD
 from tango import lodestro_method
 
+import kinsol as kin
 
 # ****** Solution ****** #
 def steady_state_solution(x, nL, p=2, S0=1, delta=0.1, L=1):
