@@ -358,16 +358,16 @@ def main():
         os.makedirs(outdir)
 
     # full history
-    np.savetxt(outdir + '/n_history.txt', nAll)
-    np.savetxt(outdir + '/err_history.txt', nAll)
+    np.savetxt(outdir + '/n_history_mod.txt', nAll)
+    np.savetxt(outdir + '/err_history_mod.txt', nAll)
 
     # up to but not including last iteration
-    np.savetxt(outdir + '/flux_history.txt',   fluxAll)
-    np.savetxt(outdir + '/D_history.txt',      DAll)
-    np.savetxt(outdir + '/c_history.txt',      cAll)
-    np.savetxt(outdir + '/D_EWMA_history.txt', D_EWMAAll)
-    np.savetxt(outdir + '/c_EWMA_history.txt', c_EWMAAll)
-    np.savetxt(outdir + '/resid_history.txt',  residAll)
+    np.savetxt(outdir + '/flux_history_mod.txt',   fluxAll)
+    np.savetxt(outdir + '/D_history_mod.txt',      DAll)
+    np.savetxt(outdir + '/c_history_mod.txt',      cAll)
+    np.savetxt(outdir + '/D_EWMA_history_mod.txt', D_EWMAAll)
+    np.savetxt(outdir + '/c_EWMA_history_mod.txt', c_EWMAAll)
+    np.savetxt(outdir + '/resid_history_mod.txt',  residAll)
 
     # final plots
 
