@@ -131,6 +131,8 @@ def main():
     #  plotting options
     parser.add_argument('--plotall', action='store_true',
                         help='enable all plot options')
+    parser.add_argument('--noplots', dest='makeplots', action='store_false',
+                        help='disable all plot options')
     parser.add_argument('--nosolutionplot', dest='plotfinalsolution', action='store_false',
                         help='disable final solution plot')
     parser.add_argument('--noconvplot', dest='plotconvergence', action='store_false',
@@ -371,305 +373,307 @@ def main():
 
     # final plots
 
-    if (args.plotall or args.plotfinalsolution):
+    if args.makeplots:
 
-        # plot final solution
-        plt.figure()
-        plt.plot(x, nFinal, label='numerical solution')
-        plt.plot(x, nss, 'k--', label='analytic solution')
-        plt.xlabel('x')
-        plt.ylabel('n')
-        plt.title('Final Solution')
-        plt.legend(loc='best')
-        plt.grid()
+        if (args.plotall or args.plotfinalsolution):
 
-    if (args.plotall or args.plotconvergence):
+            # plot final solution
+            plt.figure()
+            plt.plot(x, nFinal, label='numerical solution')
+            plt.plot(x, nss, 'k--', label='analytic solution')
+            plt.xlabel('x')
+            plt.ylabel('n')
+            plt.title('Final Solution')
+            plt.legend(loc='best')
+            plt.grid()
 
-        # plot residual norm history
-        res_nrm = np.zeros((numIters,1))
-        for i in iters:
+        if (args.plotall or args.plotconvergence):
+
+            # plot residual norm history
+            res_nrm = np.zeros((numIters,1))
+            for i in iters:
+                if args.norm == 'L2':
+                    res_nrm[i] = np.sqrt(np.sum(residAll[i,:]**2))  # L2
+                elif args.norm == 'RMS':
+                    res_nrm[i] = np.sqrt(np.mean(residAll[i,:]**2)) # RMS
+                else:
+                    res_nrm[i] = np.amax(np.abs(residAll[i,:]))     # Max
+
+            # estimate convergence constant
+            idx = min(args.refidx[0], numIters - 1)
+            c   = res_nrm[idx] / res_nrm[idx-1]
+
+            # min to cutoff ref plot
+            min_ref = np.amin(res_nrm) / 2.0
+
+            # create convergence rate reference
+            res_ref = np.zeros((numIters,1))
+            res_ref[0] = (5.0 * res_nrm[idx]) / c**idx
+            plt_idx = -1
+            for i in range(1, numIters):
+                res_ref[i] = c * res_ref[i-1]
+                if res_ref[i] < min_ref:
+                    plt_idx = i
+                    break
+
+            plt.figure()
+            plt.semilogy(iters, res_nrm, nonpositive='clip', label='residual')
+            plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
+
+            plt.xlabel('Iteration')
             if args.norm == 'L2':
-                res_nrm[i] = np.sqrt(np.sum(residAll[i,:]**2))  # L2
+                plt.ylabel('$||R||_{L2}$')
             elif args.norm == 'RMS':
-                res_nrm[i] = np.sqrt(np.mean(residAll[i,:]**2)) # RMS
+                plt.ylabel('$||R||_{RMS}$')
             else:
-                res_nrm[i] = np.amax(np.abs(residAll[i,:]))     # Max
+                plt.ylabel('$||R||_{max}$')
+            plt.title('Residual History')
+            plt.legend(loc='best')
+            plt.grid()
 
-        # estimate convergence constant
-        idx = args.refidx[0]
-        c   = res_nrm[idx] / res_nrm[idx-1]
+            # plot F residual norm history
+            resF_nrm = np.zeros((numIters, 1))
+            for i in iters:
+                if args.norm == 'L2':
+                    resF_nrm[i] = np.sqrt(np.sum(FAll[i,:]**2))  # L2
+                elif args.norm == 'RMS':
+                    resF_nrm[i] = np.sqrt(np.mean(FAll[i,:]**2)) # RMS
+                else:
+                    resF_nrm[i] = np.amax(np.abs(FAll[i,:]))     # Max
 
-        # min to cutoff ref plot
-        min_ref = np.amin(res_nrm) / 2.0
+            # estimate convergence constant
+            idx = min(args.refidx[1], numIters - 1)
+            c   = resF_nrm[idx] / resF_nrm[idx-1]
 
-        # create convergence rate reference
-        res_ref = np.zeros((numIters,1))
-        res_ref[0] = (5.0 * res_nrm[idx]) / c**idx
-        plt_idx = -1
-        for i in range(1, numIters):
-            res_ref[i] = c * res_ref[i-1]
-            if res_ref[i] < min_ref:
-                plt_idx = i
-                break
+            # min to cutoff ref plot
+            min_ref = np.amin(resF_nrm) / 2.0
 
-        plt.figure()
-        plt.semilogy(iters, res_nrm, nonpositive='clip', label='residual')
-        plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
+            # create convergence rate reference
+            resF_ref = np.zeros((numIters,1))
+            resF_ref[0] = (5.0 * resF_nrm[idx]) / c**idx
+            plt_idx = -1
+            for i in range(1, numIters):
+                resF_ref[i] = c * resF_ref[i-1]
+                if (resF_ref[i] < min_ref):
+                    plt_idx = i
+                    break
 
-        plt.xlabel('Iteration')
-        if args.norm == 'L2':
-            plt.ylabel('$||R||_{L2}$')
-        elif args.norm == 'RMS':
-            plt.ylabel('$||R||_{RMS}$')
-        else:
-            plt.ylabel('$||R||_{max}$')
-        plt.title('Residual History')
-        plt.legend(loc='best')
-        plt.grid()
-
-        # plot F residual norm history
-        resF_nrm = np.zeros((numIters, 1))
-        for i in iters:
+            plt.figure()
+            plt.semilogy(iters, resF_nrm, nonpositive='clip', label='residual')
+            plt.semilogy(iters[:plt_idx+1], resF_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
+            plt.xlabel('Iteration')
             if args.norm == 'L2':
-                resF_nrm[i] = np.sqrt(np.sum(FAll[i,:]**2))  # L2
+                plt.ylabel('$||F_i = G(n_i) - n_i||_{L2}$')
             elif args.norm == 'RMS':
-                resF_nrm[i] = np.sqrt(np.mean(FAll[i,:]**2)) # RMS
+                plt.ylabel('$||F_i = G(n_i) - n_i||_{RMS}$')
             else:
-                resF_nrm[i] = np.amax(np.abs(FAll[i,:]))     # Max
+                plt.ylabel('$||F_i = G(n_i) - n_i||_{max}$')
+            plt.title('F Residual History')
+            plt.legend(loc='best')
+            plt.grid()
 
-        # estimate convergence constant
-        idx = args.refidx[1]
-        c   = resF_nrm[idx] / resF_nrm[idx-1]
+            # plot error norm history
+            err_nrm = np.zeros((numIters + 1, 1))
+            for i in itersp1:
+                if args.norm == 'L2':
+                    err_nrm[i] = np.sqrt(np.sum(errAll[i,:]**2))  # L2
+                elif args.norm == 'RMS':
+                    err_nrm[i] = np.sqrt(np.mean(errAll[i,:]**2)) # RMS
+                else:
+                    err_nrm[i] = np.amax(np.abs(errAll[i,:]))     # Max
 
-        # min to cutoff ref plot
-        min_ref = np.amin(resF_nrm) / 2.0
+            # estimate convergence constant
+            idx = min(args.refidx[2], numIters - 1)
+            c   = err_nrm[idx] / err_nrm[idx-1]
 
-        # create convergence rate reference
-        resF_ref = np.zeros((numIters,1))
-        resF_ref[0] = (5.0 * resF_nrm[idx]) / c**idx
-        plt_idx = -1
-        for i in range(1, numIters):
-            resF_ref[i] = c * resF_ref[i-1]
-            if (resF_ref[i] < min_ref):
-                plt_idx = i
-                break
+            # min to cutoff ref plot
+            min_ref = np.amin(err_nrm) / 2.0
 
-        plt.figure()
-        plt.semilogy(iters, resF_nrm, nonpositive='clip', label='residual')
-        plt.semilogy(iters[:plt_idx+1], resF_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
-        plt.xlabel('Iteration')
-        if args.norm == 'L2':
-            plt.ylabel('$||F_i = G(n_i) - n_i||_{L2}$')
-        elif args.norm == 'RMS':
-            plt.ylabel('$||F_i = G(n_i) - n_i||_{RMS}$')
-        else:
-            plt.ylabel('$||F_i = G(n_i) - n_i||_{max}$')
-        plt.title('F Residual History')
-        plt.legend(loc='best')
-        plt.grid()
+            # create convergence rate reference
+            err_ref = np.zeros((numIters + 1,1))
+            err_ref[0] = (5.0 * err_nrm[idx]) / c**idx
+            plt_idx = -1
+            for i in range(1, numIters + 1):
+                err_ref[i] = c * err_ref[i-1]
+                if (err_ref[i] < min_ref):
+                    plt_idx = i
+                    break
 
-        # plot error norm history
-        err_nrm = np.zeros((numIters + 1, 1))
-        for i in itersp1:
+            plt.figure()
+            plt.semilogy(itersp1, err_nrm, nonpositive='clip', label='residual')
+            plt.semilogy(itersp1[:plt_idx+1], err_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
+            plt.xlabel('Iteration')
             if args.norm == 'L2':
-                err_nrm[i] = np.sqrt(np.sum(errAll[i,:]**2))  # L2
+                plt.ylabel('$||n - n_{ss}||_{L2}$')
             elif args.norm == 'RMS':
-                err_nrm[i] = np.sqrt(np.mean(errAll[i,:]**2)) # RMS
+                plt.ylabel('$||n - n_{ss}||_{RMS}$')
             else:
-                err_nrm[i] = np.amax(np.abs(errAll[i,:]))     # Max
+                plt.ylabel('$||n - n_{ss}||_{max}$')
+            plt.title('Error History')
+            plt.legend(loc='best')
+            plt.grid()
 
-        # estimate convergence constant
-        idx = args.refidx[2]
-        c   = err_nrm[idx] / err_nrm[idx-1]
+        if (args.plotall or args.plotfinalreserr):
 
-        # min to cutoff ref plot
-        min_ref = np.amin(err_nrm) / 2.0
+            # plot final absolute residual
+            res = np.abs(residAll[-1,:])
+            plt.figure()
+            plt.semilogy(x, res)
+            plt.xlabel('x')
+            plt.ylabel('$\|R\|$')
+            plt.title('Final Absolute Residual')
+            plt.grid()
 
-        # create convergence rate reference
-        err_ref = np.zeros((numIters + 1,1))
-        err_ref[0] = (5.0 * err_nrm[idx]) / c**idx
-        plt_idx = -1
-        for i in range(1, numIters + 1):
-            err_ref[i] = c * err_ref[i-1]
-            if (err_ref[i] < min_ref):
-                plt_idx = i
-                break
+            # plot final absolute F residual
+            resF = np.abs(FAll[-1,:])
+            plt.figure()
+            plt.semilogy(x, resF)
+            plt.xlabel('x')
+            plt.ylabel('$\|F_i = G(n_i) - n_i\|$')
+            plt.title('Final Absolute F Resiudal')
+            plt.grid()
 
-        plt.figure()
-        plt.semilogy(itersp1, err_nrm, nonpositive='clip', label='residual')
-        plt.semilogy(itersp1[:plt_idx+1], err_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
-        plt.xlabel('Iteration')
-        if args.norm == 'L2':
-            plt.ylabel('$||n - n_{ss}||_{L2}$')
-        elif args.norm == 'RMS':
-            plt.ylabel('$||n - n_{ss}||_{RMS}$')
+            # plot final absolute error
+            err = np.abs(errAll[-1,:])
+            plt.figure()
+            plt.semilogy(x, err)
+            plt.xlabel('x')
+            plt.ylabel('$\|n - n_{ss}\|$')
+            plt.title('Final Absolute Error')
+            plt.grid()
+
+
+        # history range to plot
+        min_iter = max(args.historyrange[0], 0)
+        max_iter = min(args.historyrange[1], maxIterations)
+        num_iter = max_iter - min_iter + 1;
+
+        # set color cycle history plot lines
+        if (num_iter > 20):
+            mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.plasma(np.linspace(0, 1, num_iter)))
+        elif (num_iter > 10):
+            mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab20(np.linspace(0, 1, num_iter)))
         else:
-            plt.ylabel('$||n - n_{ss}||_{max}$')
-        plt.title('Error History')
-        plt.legend(loc='best')
-        plt.grid()
+            mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab10(np.linspace(0, 1, num_iter)))
 
-    if (args.plotall or args.plotfinalreserr):
+        if (args.plotall or args.plotsolutionhistory):
 
-        # plot final absolute residual
-        res = np.abs(residAll[-1,:])
-        plt.figure()
-        plt.semilogy(x, res)
-        plt.xlabel('x')
-        plt.ylabel('$\|R\|$')
-        plt.title('Final Absolute Residual')
-        plt.grid()
+            # plot solution history
+            fig, ax = plt.subplots()
+            for i in range(min_iter, max_iter + 1):
+                ax.plot(x, nAll[i], label=i)
+            plt.plot(x, nss, 'k--', label='analytic solution')
+            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+            plt.xlabel('x')
+            plt.ylabel('n')
+            plt.title('Solution History')
+            plt.grid()
 
-        # plot final absolute F residual
-        resF = np.abs(FAll[-1,:])
-        plt.figure()
-        plt.semilogy(x, resF)
-        plt.xlabel('x')
-        plt.ylabel('$\|F_i = G(n_i) - n_i\|$')
-        plt.title('Final Absolute F Resiudal')
-        plt.grid()
+        if (args.plotall or args.plotreserrhistory):
 
-        # plot final absolute error
-        err = np.abs(errAll[-1,:])
-        plt.figure()
-        plt.semilogy(x, err)
-        plt.xlabel('x')
-        plt.ylabel('$\|n - n_{ss}\|$')
-        plt.title('Final Absolute Error')
-        plt.grid()
+            # plot residual history
+            fig, ax = plt.subplots()
+            for i in range(min_iter, min(max_iter + 1, maxIterations)):
+                ax.semilogy(x, np.abs(residAll[i]), label=i)
+            ax.semilogy(x, np.abs(residAll[maxIterations - 1]), 'k--', label='final')
+            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+            plt.xlabel('x')
+            plt.ylabel('$\|R\|$')
+            plt.title('Absolute Residual History')
+            plt.grid()
 
+            # plot F residual history
+            fig, ax = plt.subplots()
+            for i in range(min_iter, min(max_iter + 1, maxIterations)):
+                ax.semilogy(x, np.abs(FAll[i]), label=i)
+            ax.semilogy(x, np.abs(FAll[maxIterations - 1]), 'k--', label='final')
+            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+            plt.xlabel('x')
+            plt.ylabel('$\|F_i = G(n_i) - n_i\|$')
+            plt.title('Absolute F Residual History')
+            plt.grid()
 
-    # history range to plot
-    min_iter = max(args.historyrange[0], 0)
-    max_iter = min(args.historyrange[1], maxIterations)
-    num_iter = max_iter - min_iter + 1;
+            # plot absolute error history
+            fig, ax = plt.subplots()
+            for i in range(min_iter, max_iter + 1):
+                ax.semilogy(x, np.abs(errAll[i]), label=i)
+            ax.semilogy(x, np.abs(errAll[maxIterations]), 'k--', label='final')
+            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+            plt.xlabel('x')
+            plt.ylabel('$\|n - n_{ss}\|$')
+            plt.title('Absolute Error History')
+            plt.grid()
 
-    # set color cycle history plot lines
-    if (num_iter > 20):
-        mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.plasma(np.linspace(0, 1, num_iter)))
-    elif (num_iter > 10):
-        mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab20(np.linspace(0, 1, num_iter)))
-    else:
-        mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab10(np.linspace(0, 1, num_iter)))
+        if (args.plotall or args.plotfluxdchistory):
 
-    if (args.plotall or args.plotsolutionhistory):
+            # plot flux history
+            fig, ax = plt.subplots()
+            for i in range(min_iter, min(max_iter + 1, maxIterations)):
+                ax.semilogy(x, fluxAll[i], label=i)
+            ax.semilogy(x, fluxAll[maxIterations - 1], 'k--', label='final')
+            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+            plt.xlabel('x')
+            plt.ylabel('flux')
+            plt.title('Flux History')
+            plt.grid()
 
-        # plot solution history
-        fig, ax = plt.subplots()
-        for i in range(min_iter, max_iter + 1):
-            ax.plot(x, nAll[i], label=i)
-        plt.plot(x, nss, 'k--', label='analytic solution')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        plt.xlabel('x')
-        plt.ylabel('n')
-        plt.title('Solution History')
-        plt.grid()
+            # plot D history
+            fig, ax = plt.subplots()
+            for i in range(min_iter, min(max_iter + 1, maxIterations)):
+                ax.semilogy(x, DAll[i], label=i)
+            ax.semilogy(x, DAll[maxIterations - 1], 'k--', label='final')
+            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+            plt.xlabel('x')
+            plt.ylabel('D')
+            plt.title('D History')
+            plt.grid()
 
-    if (args.plotall or args.plotreserrhistory):
+            # plot D_EWMA history
+            fig, ax = plt.subplots()
+            for i in range(min_iter, min(max_iter + 1, maxIterations)):
+                ax.semilogy(x, D_EWMAAll[i], label=i)
+            ax.semilogy(x, D_EWMAAll[maxIterations - 1], 'k--', label='final')
+            ax.semilogy(x, DAll[maxIterations - 1], 'r:', label='final (no relaxation)')
+            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+            plt.xlabel('x')
+            plt.ylabel('D')
+            plt.title('Relaxed D History')
+            plt.grid()
 
-        # plot residual history
-        fig, ax = plt.subplots()
-        for i in range(min_iter, min(max_iter + 1, maxIterations)):
-            ax.semilogy(x, np.abs(residAll[i]), label=i)
-        ax.semilogy(x, np.abs(residAll[maxIterations - 1]), 'k--', label='final')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        plt.xlabel('x')
-        plt.ylabel('$\|R\|$')
-        plt.title('Absolute Residual History')
-        plt.grid()
+            # plot c history
+            fig, ax = plt.subplots()
+            for i in range(min_iter, min(max_iter + 1, maxIterations)):
+                ax.semilogy(x, cAll[i], label=i)
+            ax.semilogy(x, cAll[maxIterations - 1], 'k--', label='final')
+            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+            plt.xlabel('x')
+            plt.ylabel('c')
+            plt.title('c History')
+            plt.grid()
 
-        # plot F residual history
-        fig, ax = plt.subplots()
-        for i in range(min_iter, min(max_iter + 1, maxIterations)):
-            ax.semilogy(x, np.abs(FAll[i]), label=i)
-        ax.semilogy(x, np.abs(FAll[maxIterations - 1]), 'k--', label='final')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        plt.xlabel('x')
-        plt.ylabel('$\|F_i = G(n_i) - n_i\|$')
-        plt.title('Absolute F Residual History')
-        plt.grid()
+            # plot c_EMWA history
+            fig, ax = plt.subplots()
+            for i in range(min_iter, min(max_iter + 1, maxIterations)):
+                ax.semilogy(x, c_EWMAAll[i], label=i)
+            ax.semilogy(x, c_EWMAAll[maxIterations - 1], 'k--', label='final')
+            ax.semilogy(x, cAll[maxIterations - 1], 'r:', label='final (no relaxation)')
+            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+            plt.xlabel('x')
+            plt.ylabel('c')
+            plt.title('Relaxed c History')
+            plt.grid()
 
-        # plot absolute error history
-        fig, ax = plt.subplots()
-        for i in range(min_iter, max_iter + 1):
-            ax.semilogy(x, np.abs(errAll[i]), label=i)
-        ax.semilogy(x, np.abs(errAll[maxIterations]), 'k--', label='final')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        plt.xlabel('x')
-        plt.ylabel('$\|n - n_{ss}\|$')
-        plt.title('Absolute Error History')
-        plt.grid()
+        # display all plots
+        if (args.plotall or
+            args.plotfinalsolution or
+            args.plotconvergence or
+            args.plotfinalreserr or
+            args.plotsolutionhistory or
+            args.plotreserrhistory or
+            args.plotfluxdchistory):
 
-    if (args.plotall or args.plotfluxdchistory):
-
-        # plot flux history
-        fig, ax = plt.subplots()
-        for i in range(min_iter, min(max_iter + 1, maxIterations)):
-            ax.semilogy(x, fluxAll[i], label=i)
-        ax.semilogy(x, fluxAll[maxIterations - 1], 'k--', label='final')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        plt.xlabel('x')
-        plt.ylabel('flux')
-        plt.title('Flux History')
-        plt.grid()
-
-        # plot D history
-        fig, ax = plt.subplots()
-        for i in range(min_iter, min(max_iter + 1, maxIterations)):
-            ax.semilogy(x, DAll[i], label=i)
-        ax.semilogy(x, DAll[maxIterations - 1], 'k--', label='final')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        plt.xlabel('x')
-        plt.ylabel('D')
-        plt.title('D History')
-        plt.grid()
-
-        # plot D_EWMA history
-        fig, ax = plt.subplots()
-        for i in range(min_iter, min(max_iter + 1, maxIterations)):
-            ax.semilogy(x, D_EWMAAll[i], label=i)
-        ax.semilogy(x, D_EWMAAll[maxIterations - 1], 'k--', label='final')
-        ax.semilogy(x, DAll[maxIterations - 1], 'r:', label='final (no relaxation)')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        plt.xlabel('x')
-        plt.ylabel('D')
-        plt.title('Relaxed D History')
-        plt.grid()
-
-        # plot c history
-        fig, ax = plt.subplots()
-        for i in range(min_iter, min(max_iter + 1, maxIterations)):
-            ax.semilogy(x, cAll[i], label=i)
-        ax.semilogy(x, cAll[maxIterations - 1], 'k--', label='final')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        plt.xlabel('x')
-        plt.ylabel('c')
-        plt.title('c History')
-        plt.grid()
-
-        # plot c_EMWA history
-        fig, ax = plt.subplots()
-        for i in range(min_iter, min(max_iter + 1, maxIterations)):
-            ax.semilogy(x, c_EWMAAll[i], label=i)
-        ax.semilogy(x, c_EWMAAll[maxIterations - 1], 'k--', label='final')
-        ax.semilogy(x, cAll[maxIterations - 1], 'r:', label='final (no relaxation)')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        plt.xlabel('x')
-        plt.ylabel('c')
-        plt.title('Relaxed c History')
-        plt.grid()
-
-    # display all plots
-    if (args.plotall or
-        args.plotfinalsolution or
-        args.plotconvergence or
-        args.plotfinalreserr or
-        args.plotsolutionhistory or
-        args.plotreserrhistory or
-        args.plotfluxdchistory):
-
-        # show plots
-        plt.show()
+            # show plots
+            plt.show()
 
 
 
