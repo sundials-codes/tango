@@ -58,13 +58,17 @@ def source(x, S0=1):
 
 # ****** Flux Model (Shestakov) ***** #
 class FluxModel:
-    def __init__(self, dx, p=2):
+    def __init__(self, dx, p=2, firstOrderEdge=True):
         self.dx = dx
         self.p = p
+        self.firstOrderEdge = firstOrderEdge
     def get_flux(self, profile):
         # Return flux Gamma on the same grid as n
         n = profile
-        dndx = derivatives.dx_centered_difference_edge_first_order(n, self.dx)
+        if self.firstOrderEdge:
+            dndx = derivatives.dx_centered_difference_edge_first_order(n, self.dx)
+        else:
+            dndx = derivatives.dx_centered_difference(n, self.dx)
         Deff = np.abs( (dndx/n)**self.p )
         Gamma = -Deff * dndx
         return Gamma
@@ -100,6 +104,8 @@ def main():
                         help='power in pow IC')
     parser.add_argument('--dt', type=float, default=1e4,
                         help='time step size')
+    parser.add_argument('--centerdiff', dest='firstOrderEdge', action='store_false',
+                        help='use second order center differences in FluxModel')
 
     # flux splitter options
     parser.add_argument('--Dmin', type=float, default=1e-5,
@@ -214,6 +220,7 @@ def main():
     print("  Left boundary value  =", n0)
     print("  Right boundary value =", nL)
     print("  Time step size       =", dt)
+    print("  1st order edge       =", args.firstOrderEdge)
     print("  D minimum            =", args.Dmin)
     print("  D maximum            =", args.Dmax)
     print("  dp/dx threshold      =", args.dpdxThreshold)
@@ -228,7 +235,7 @@ def main():
     profile     = np.copy(n_IC)
 
     # instantiate flux model
-    fluxModel = FluxModel(dx, p=p)
+    fluxModel = FluxModel(dx, p=p, firstOrderEdge=args.firstOrderEdge)
 
     # initialize data storage for full history (initial to end)
     nAll   = np.zeros((maxIterations+1, N))
