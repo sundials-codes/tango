@@ -123,6 +123,8 @@ def main():
                         help='norm to use in plots')
 
     #  plotting options
+    parser.add_argument('--plotall', action='store_true',
+                        help='enable all plot options')
     parser.add_argument('--nosolutionplot', dest='plotfinalsolution', action='store_false',
                         help='disable final solution plot')
     parser.add_argument('--noconvplot', dest='plotconvergence', action='store_false',
@@ -362,7 +364,7 @@ def main():
 
     # final plots
 
-    if (args.plotfinalsolution):
+    if (args.plotall or args.plotfinalsolution):
 
         # plot final solution
         plt.figure()
@@ -374,7 +376,7 @@ def main():
         plt.legend(loc='best')
         plt.grid()
 
-    if (args.plotconvergence):
+    if (args.plotall or args.plotconvergence):
 
         # plot residual norm history
         res_nrm = np.zeros((numIters,1))
@@ -500,7 +502,7 @@ def main():
         plt.legend(loc='best')
         plt.grid()
 
-    if (args.plotfinalreserr):
+    if (args.plotall or args.plotfinalreserr):
 
         # plot final absolute residual
         res = np.abs(residAll[-1,:])
@@ -543,7 +545,7 @@ def main():
     else:
         mpl.rcParams['axes.prop_cycle'] = plt.cycler('color', plt.cm.tab10(np.linspace(0, 1, num_iter)))
 
-    if (args.plotsolutionhistory):
+    if (args.plotall or args.plotsolutionhistory):
 
         # plot solution history
         fig, ax = plt.subplots()
@@ -556,7 +558,7 @@ def main():
         plt.title('Solution History')
         plt.grid()
 
-    if (args.plotreserrhistory):
+    if (args.plotall or args.plotreserrhistory):
 
         # plot residual history
         fig, ax = plt.subplots()
@@ -591,7 +593,7 @@ def main():
         plt.title('Absolute Error History')
         plt.grid()
 
-    if (args.plotfluxdchistory):
+    if (args.plotall or args.plotfluxdchistory):
 
         # plot flux history
         fig, ax = plt.subplots()
@@ -651,7 +653,8 @@ def main():
         plt.grid()
 
     # display all plots
-    if (args.plotfinalsolution or
+    if (args.plotall or
+        args.plotfinalsolution or
         args.plotconvergence or
         args.plotfinalreserr or
         args.plotsolutionhistory or
