@@ -15,5 +15,8 @@ coverage.xml
 # Example output
 examples/output
 
+# KINSOL log files
+*.log
+
 # Environment setup script
 env.sh
