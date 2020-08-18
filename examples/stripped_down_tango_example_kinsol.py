@@ -275,7 +275,7 @@ class Problem:
         return 0
 
 
-    def solveKINSOL(profile_old, maxIterations, tol=1.0e-11, beta=1.0, m=0):
+    def solveKINSOL(profile_old, maxIterations, tol=1.0e-11, beta=1.0, m=0, delay=0):
 
         # save the initial profile and error
         Problem.nAll[0, :]   = profile_old
@@ -315,6 +315,19 @@ class Problem:
         # return the newest iteration at end
         flag = kin.KINSetReturnNewest(kmem, 1)
         if flag < 0: raise RuntimeError(f'KINSetReturnNewest returned {flag}')
+
+        # set Anderson acceleration delay
+        if delay > 0:
+            flag = kin.KINSetDelayAA(kmem, delay)
+            if flag < 0: raise RuntimeError(f'KINSetDelayAA returned {flag}')
+
+        # set fixed point and Anderson acceleration damping
+        if beta < 1.0:
+            flag = kin.KINSetDampingFP(kmem, beta)
+            if flag < 0: raise RuntimeError(f'KINSetDampingFP returned {flag}')
+
+            flag = kin.KINSetDampingAA(kmem, beta)
+            if flag < 0: raise RuntimeError(f'KINSetDampingAA returned {flag}')
 
         # set error log file
         flag = kin.KINSetErrFilename(kmem, "kinsol_error.log")
@@ -367,8 +380,6 @@ def main():
 
     parser = argparse.ArgumentParser(description='Run Shestakov example')
 
-
-
     # problem setup options
     parser.add_argument('--p', type=float, default=2.0,
                         help='power for analytic flux')
@@ -411,6 +422,10 @@ def main():
     # KINSOL options
     parser.add_argument('--kinsol', action='store_true',
                         help='solve with KINSOL')
+    parser.add_argument('--mAA', type=int, default=0,
+                        help='Anderson acceleration depth')
+    parser.add_argument('--delayAA', type=int, default=0,
+                        help='number of iterations to delay Anderson acceleration')
 
     # norm option (only for plots right now since iteration always runs to max)
     parser.add_argument('--norm', type=str, default='RMS',
@@ -457,7 +472,8 @@ def main():
     nInitial = np.copy(Problem.n_mminus1)
 
     if args.kinsol:
-        nFinal = Problem.solveKINSOL(nInitial, args.maxIterations)
+        nFinal = Problem.solveKINSOL(nInitial, args.maxIterations, beta=args.beta,
+                                     m=args.mAA, delay=args.delayAA)
     else:
         nFinal = Problem.solve(nInitial, args.maxIterations, args.beta)
 
