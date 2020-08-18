@@ -361,7 +361,7 @@ def main():
 
     # full history
     np.savetxt(outdir + '/n_history_mod.txt', nAll)
-    np.savetxt(outdir + '/err_history_mod.txt', nAll)
+    np.savetxt(outdir + '/err_history_mod.txt', errAll)
 
     # up to but not including last iteration
     np.savetxt(outdir + '/flux_history_mod.txt',   fluxAll)
