@@ -451,6 +451,8 @@ def main():
                         help='enable flux, D, and c history plots')
     parser.add_argument('--historyrange', type=int, nargs=2, default=[0, 200],
                         help='iterations to use in history plots (inclusive range)')
+    parser.add_argument('--noref', dest='plotref', action='store_false',
+                        help='disable convergence rate reference line')
     parser.add_argument('--refidx', type=int, nargs=3, default=[100, 50, 10],
                         help='index to use for convergence reference line (resid, F resid, err)')
 
@@ -542,26 +544,29 @@ def main():
                 else:
                     res_nrm[i] = np.amax(np.abs(Problem.residAll[i,:]))     # Max
 
-            # estimate convergence constant
-            idx = min(args.refidx[0], Problem.numIters - 1)
-            c   = res_nrm[idx] / res_nrm[idx-1]
+            # convergence rate reference line
+            if args.plotref:
+                # estimate convergence constant
+                idx = min(args.refidx[0], Problem.numIters - 1)
+                c   = res_nrm[idx] / res_nrm[idx-1]
 
-            # min to cutoff ref plot
-            min_ref = np.amin(res_nrm) / 2.0
+                # min to cutoff ref plot
+                min_ref = np.amin(res_nrm) / 2.0
 
-            # create convergence rate reference
-            res_ref = np.zeros((Problem.numIters,1))
-            res_ref[0] = (5.0 * res_nrm[idx]) / c**idx
-            plt_idx = -1
-            for i in range(1, Problem.numIters):
-                res_ref[i] = c * res_ref[i-1]
-                if res_ref[i] < min_ref:
-                    plt_idx = i
-                    break
+                # create convergence rate reference
+                res_ref = np.zeros((Problem.numIters,1))
+                res_ref[0] = (5.0 * res_nrm[idx]) / c**idx
+                plt_idx = -1
+                for i in range(1, Problem.numIters):
+                    res_ref[i] = c * res_ref[i-1]
+                    if res_ref[i] < min_ref:
+                        plt_idx = i
+                        break
 
             plt.figure()
             plt.semilogy(iters, res_nrm, nonpositive='clip', label='residual')
-            plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
+            if args.plotref:
+                plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
 
             plt.xlabel('Iteration')
             if args.norm == 'L2':
@@ -584,26 +589,29 @@ def main():
                 else:
                     resF_nrm[i] = np.amax(np.abs(Problem.FAll[i,:]))     # Max
 
-            # estimate convergence constant
-            idx = min(args.refidx[1], Problem.numIters - 1)
-            c   = resF_nrm[idx] / resF_nrm[idx-1]
+            # convergence rate reference line
+            if args.plotref:
+                # estimate convergence constant
+                idx = min(args.refidx[1], Problem.numIters - 1)
+                c   = resF_nrm[idx] / resF_nrm[idx-1]
 
-            # min to cutoff ref plot
-            min_ref = np.amin(resF_nrm) / 2.0
+                # min to cutoff ref plot
+                min_ref = np.amin(resF_nrm) / 2.0
 
-            # create convergence rate reference
-            resF_ref = np.zeros((Problem.numIters,1))
-            resF_ref[0] = (5.0 * resF_nrm[idx]) / c**idx
-            plt_idx = -1
-            for i in range(1, Problem.numIters):
-                resF_ref[i] = c * resF_ref[i-1]
-                if (resF_ref[i] < min_ref):
-                    plt_idx = i
-                    break
+                # create convergence rate reference
+                resF_ref = np.zeros((Problem.numIters,1))
+                resF_ref[0] = (5.0 * resF_nrm[idx]) / c**idx
+                plt_idx = -1
+                for i in range(1, Problem.numIters):
+                    resF_ref[i] = c * resF_ref[i-1]
+                    if (resF_ref[i] < min_ref):
+                        plt_idx = i
+                        break
 
             plt.figure()
             plt.semilogy(iters, resF_nrm, nonpositive='clip', label='residual')
-            plt.semilogy(iters[:plt_idx+1], resF_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
+            if args.plotref:
+                plt.semilogy(iters[:plt_idx+1], resF_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
             plt.xlabel('Iteration')
             if args.norm == 'L2':
                 plt.ylabel('$||F_i = G(n_i) - n_i||_{L2}$')
@@ -625,26 +633,30 @@ def main():
                 else:
                     err_nrm[i] = np.amax(np.abs(Problem.errAll[i,:]))     # Max
 
-            # estimate convergence constant
-            idx = min(args.refidx[2], Problem.numIters - 1)
-            c   = err_nrm[idx] / err_nrm[idx-1]
+            # convergence rate reference line
+            if args.plotref:
+                # estimate convergence constant
+                idx = min(args.refidx[2], Problem.numIters - 1)
+                c   = err_nrm[idx] / err_nrm[idx-1]
 
-            # min to cutoff ref plot
-            min_ref = np.amin(err_nrm) / 2.0
+                # min to cutoff ref plot
+                min_ref = np.amin(err_nrm) / 2.0
 
-            # create convergence rate reference
-            err_ref = np.zeros((Problem.numIters + 1,1))
-            err_ref[0] = (5.0 * err_nrm[idx]) / c**idx
-            plt_idx = -1
-            for i in range(1, Problem.numIters + 1):
-                err_ref[i] = c * err_ref[i-1]
-                if (err_ref[i] < min_ref):
-                    plt_idx = i
-                    break
+                # create convergence rate reference
+                err_ref = np.zeros((Problem.numIters + 1,1))
+                err_ref[0] = (5.0 * err_nrm[idx]) / c**idx
+                plt_idx = -1
+                for i in range(1, Problem.numIters + 1):
+                    err_ref[i] = c * err_ref[i-1]
+                    if (err_ref[i] < min_ref):
+                        plt_idx = i
+                        break
 
             plt.figure()
             plt.semilogy(itersp1, err_nrm, nonpositive='clip', label='residual')
-            plt.semilogy(itersp1[:plt_idx+1], err_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
+            # convergence rate reference line
+            if args.plotref:
+                plt.semilogy(itersp1[:plt_idx+1], err_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
             plt.xlabel('Iteration')
             if args.norm == 'L2':
                 plt.ylabel('$||n - n_{ss}||_{L2}$')
