@@ -511,10 +511,21 @@ def main():
         prefix = prefix + '_beta_' + str(args.beta)
         prefix = prefix + '_m_' + str(args.mAA)
         prefix = prefix + '_delay_' + str(args.delayAA)
+
+        title = 'KINSOL'
+        title = title + ', a = ' + str(args.alpha)
+        title = title + ', b = ' + str(args.beta)
+        title = title + ', m = ' + str(args.mAA)
+        title = title + ', d = ' + str(args.delayAA)
+
     else:
         prefix = 'tango'
         prefix = prefix + '_alpha_' + str(args.alpha)
         prefix = prefix + '_beta_' + str(args.beta)
+
+        title = 'Tango'
+        title = title + ', a = ' + str(args.alpha)
+        title = title + ', b = ' + str(args.beta)
 
     # full history
     np.savetxt(outdir + '/' + prefix + '_n_history.txt',   Problem.nAll)
@@ -540,7 +551,7 @@ def main():
             plt.plot(Problem.x, Problem.nss, 'k--', label='analytic solution')
             plt.xlabel('x')
             plt.ylabel('n')
-            plt.title('Final Solution')
+            plt.title('Final Solution: ' + title)
             plt.legend(loc='best')
             plt.grid()
 
@@ -587,7 +598,7 @@ def main():
                 plt.ylabel('$||R||_{RMS}$')
             else:
                 plt.ylabel('$||R||_{max}$')
-            plt.title('Residual History')
+            plt.title('Residual History: ' + title)
             plt.legend(loc='best')
             plt.grid()
 
@@ -631,7 +642,7 @@ def main():
                 plt.ylabel('$||F_i = G(n_i) - n_i||_{RMS}$')
             else:
                 plt.ylabel('$||F_i = G(n_i) - n_i||_{max}$')
-            plt.title('F Residual History')
+            plt.title('F Residual History: ' + title)
             plt.legend(loc='best')
             plt.grid()
 
@@ -676,7 +687,7 @@ def main():
                 plt.ylabel('$||n - n_{ss}||_{RMS}$')
             else:
                 plt.ylabel('$||n - n_{ss}||_{max}$')
-            plt.title('Error History')
+            plt.title('Error History: ' + title)
             plt.legend(loc='best')
             plt.grid()
 
@@ -688,7 +699,7 @@ def main():
             plt.semilogy(Problem.x, res)
             plt.xlabel('x')
             plt.ylabel('$\|R\|$')
-            plt.title('Final Absolute Residual')
+            plt.title('Final Absolute Residual: ' + title)
             plt.grid()
 
             # plot final absolute F residual
@@ -697,7 +708,7 @@ def main():
             plt.semilogy(Problem.x, resF)
             plt.xlabel('x')
             plt.ylabel('$\|F_i = G(n_i) - n_i\|$')
-            plt.title('Final Absolute F Resiudal')
+            plt.title('Final Absolute F Resiudal: ' + title)
             plt.grid()
 
             # plot final absolute error
@@ -706,7 +717,7 @@ def main():
             plt.semilogy(Problem.x, err)
             plt.xlabel('x')
             plt.ylabel('$\|n - n_{ss}\|$')
-            plt.title('Final Absolute Error')
+            plt.title('Final Absolute Error: ' + title)
             plt.grid()
 
 
@@ -733,7 +744,7 @@ def main():
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
             plt.ylabel('n')
-            plt.title('Solution History')
+            plt.title('Solution History: ' + title)
             plt.grid()
 
         if (args.plotall or args.plotreserrhistory):
@@ -746,7 +757,7 @@ def main():
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
             plt.ylabel('$\|R\|$')
-            plt.title('Absolute Residual History')
+            plt.title('Absolute Residual History: ' + title)
             plt.grid()
 
             # plot F residual history
@@ -757,7 +768,7 @@ def main():
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
             plt.ylabel('$\|F_i = G(n_i) - n_i\|$')
-            plt.title('Absolute F Residual History')
+            plt.title('Absolute F Residual History: ' + title)
             plt.grid()
 
             # plot absolute error history
@@ -768,7 +779,7 @@ def main():
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
             plt.ylabel('$\|n - n_{ss}\|$')
-            plt.title('Absolute Error History')
+            plt.title('Absolute Error History: ' + title)
             plt.grid()
 
         if (args.plotall or args.plotfluxdchistory):
@@ -781,7 +792,7 @@ def main():
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
             plt.ylabel('flux')
-            plt.title('Flux History')
+            plt.title('Flux History: ' + title)
             plt.grid()
 
             # plot D history
@@ -792,7 +803,7 @@ def main():
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
             plt.ylabel('D')
-            plt.title('D History')
+            plt.title('D History: ' + title)
             plt.grid()
 
             # plot D_EWMA history
@@ -804,7 +815,7 @@ def main():
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
             plt.ylabel('D')
-            plt.title('Relaxed D History')
+            plt.title('Relaxed D History: ' + title)
             plt.grid()
 
             # plot c history
@@ -815,7 +826,7 @@ def main():
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
             plt.ylabel('c')
-            plt.title('c History')
+            plt.title('c History: ' + title)
             plt.grid()
 
             # plot c_EMWA history
@@ -827,7 +838,7 @@ def main():
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
             plt.ylabel('c')
-            plt.title('Relaxed c History')
+            plt.title('Relaxed c History: ' + title)
             plt.grid()
 
         # display all plots
