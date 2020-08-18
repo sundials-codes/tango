@@ -165,7 +165,7 @@ class Problem:
         Problem.wrmsResidHistory = np.zeros(args.maxIterations)
 
 
-    def G(profile_old):
+    def Gfun(profile_old):
 
         # get turbulent flux
         flux = Problem.fluxModel.get_flux(profile_old)
@@ -233,7 +233,7 @@ class Problem:
         for iterationNumber in np.arange(0, maxIterations):
 
             # evaluate n_{i+1} = G(n_i)
-            profile_new[:] = Problem.G(profile_old)
+            profile_new[:] = Problem.Gfun(profile_old)
 
             # relax profile
             profile_new[:] = beta * profile_new + (1.0 - beta) * profile_old
@@ -252,6 +252,109 @@ class Problem:
 
             # make new profile old
             profile_old = np.copy(profile_new)
+
+        return profile_new
+
+
+    def GfunKINSOL(sunvec_profile_old, sunvec_profile_new, user_data):
+
+        # extract arrays
+        profile_old = kin.N_VGetData(sunvec_profile_old)
+        profile_new = kin.N_VGetData(sunvec_profile_new)
+
+        if Problem.numGEvals > 0:
+            # save new profile and compute new error
+            Problem.nAll[Problem.numGEvals, :]   = profile_old
+            Problem.errAll[Problem.numGEvals, :] = profile_old - Problem.nss
+
+        profile_new[:] = Problem.Gfun(profile_old)
+
+        # update iteration count
+        Problem.numIters += 1
+
+        return 0
+
+
+    def solveKINSOL(profile_old, maxIterations, tol=1.0e-11, beta=1.0, m=0):
+
+        # save the initial profile and error
+        Problem.nAll[0, :]   = profile_old
+        Problem.errAll[0, :] = profile_old - Problem.nss
+
+        # solution and scaling arrays
+        profile_new = np.copy(profile_old)
+        scale       = np.ones_like(profile_old)
+
+        # create N_Vector objects
+        sunvec_profile = kin.N_VMake_Serial(profile_new)
+        sunvec_scale   = kin.N_VMake_Serial(scale)
+
+        # allocate memory for KINSOL
+        kmem = kin.KINCreate()
+
+        # set number of prior residuals used in Anderson acceleration
+        if m > 0:
+            flag = kin.KINSetMAA(kmem, m)
+            if flag < 0: raise RuntimeError(f'KINSetMAA returned {flag}')
+
+        # wrap the python system function so that it is callable from C
+        sysfn = kin.WrapPythonSysFn(Problem.GfunKINSOL)
+
+        # initialize KINSOL
+        flag = kin.KINInitPy(kmem, sysfn, sunvec_profile)
+        if flag < 0: raise RuntimeError(f'KINInitPy returned {flag}')
+
+        # specify stopping tolerance based on residual
+        flag = kin.KINSetFuncNormTol(kmem, tol)
+        if flag < 0: raise RuntimeError(f'KINSetFuncNormTol returned {flag}')
+
+        # ignore convergence test and run to max iterations
+        flag = kin.KINSetUseMaxIters(kmem, 1)
+        if flag < 0: raise RuntimeError(f'KINSetUseMaxIters returned {flag}')
+
+        # return the newest iteration at end
+        flag = kin.KINSetReturnNewest(kmem, 1)
+        if flag < 0: raise RuntimeError(f'KINSetReturnNewest returned {flag}')
+
+        # set error log file
+        flag = kin.KINSetErrFilename(kmem, "kinsol_error.log")
+        if flag < 0: raise RuntimeError(f'KINSetErrFilename returned {flag}')
+
+        # set info file
+        flag = kin.KINSetInfoFilename(kmem, "kinsol_info.log")
+        if flag < 0: raise RuntimeError(f'KINSetInfoFilename returned {flag}')
+
+        # set info print level
+        flag = kin.KINSetPrintLevel(kmem, 2)
+        if flag < 0: raise RuntimeError(f'KINSetPrintLevel returned {flag}')
+
+        # Call KINSOL to solve problem
+        flag = kin.KINSol(kmem,            # KINSOL memory block
+                          sunvec_profile,  # initial guess on input; solution vector
+                          kin.KIN_FP,      # global strategy choice
+                          sunvec_scale,    # scaling vector for the variable cc
+                          sunvec_scale)    # scaling vector for function values fval
+        if flag < 0:
+            raise RuntimeError(f'KINSol returned {flag}')
+        elif flag > 0:
+            print(f'KINSol returned {flag}')
+        else:
+            print('KINSol finished')
+
+        # save final profile and error
+        Problem.nAll[Problem.numGEvals, :]   = profile_new
+        Problem.errAll[Problem.numGEvals, :] = profile_new - Problem.nss
+
+        # Print solution and solver statistics
+        flag, fnorm = kin.KINGetFuncNorm(kmem)
+        if flag < 0: raise RuntimeError(f'KINGetFuncNorm returned {flag}')
+
+        print('Computed solution (||F|| = %Lg):\n' % fnorm)
+
+        # Free memory
+        #kin.KINFree(kmem)
+        #kin.N_VDestroy(sunvec_profile)
+        #kin.N_VDestroy(sunvec_scale)
 
         return profile_new
 
@@ -305,6 +408,10 @@ def main():
     parser.add_argument('--maxIterations', type=int, default=200,
                         help='maximum number iterations')
 
+    # KINSOL options
+    parser.add_argument('--kinsol', action='store_true',
+                        help='solve with KINSOL')
+
     # norm option (only for plots right now since iteration always runs to max)
     parser.add_argument('--norm', type=str, default='RMS',
                         choices=['L2','RMS','Max'],
@@ -340,7 +447,6 @@ def main():
     parser.add_argument('--debug', action='store_true',
                         help='enable debugging output')
 
-
     # parse command line args
     args = parser.parse_args()
 
@@ -349,7 +455,11 @@ def main():
 
     # solve the problem
     nInitial = np.copy(Problem.n_mminus1)
-    nFinal   = Problem.solve(nInitial, args.maxIterations, args.beta)
+
+    if args.kinsol:
+        nFinal = Problem.solveKINSOL(nInitial, args.maxIterations)
+    else:
+        nFinal = Problem.solve(nInitial, args.maxIterations, args.beta)
 
     # print final resiudal and error
     print("Finished:")
