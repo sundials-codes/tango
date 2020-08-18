@@ -504,17 +504,29 @@ def main():
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
+    # add a prefix for different configurations
+    if args.kinsol:
+        prefix = 'kinsol'
+        prefix = prefix + '_alpha_' + str(args.alpha)
+        prefix = prefix + '_beta_' + str(args.beta)
+        prefix = prefix + '_m_' + str(args.mAA)
+        prefix = prefix + '_delay_' + str(args.delayAA)
+    else:
+        prefix = 'tango'
+        prefix = prefix + '_alpha_' + str(args.alpha)
+        prefix = prefix + '_beta_' + str(args.beta)
+
     # full history
-    np.savetxt(outdir + '/n_history_kinsol.txt', Problem.nAll)
-    np.savetxt(outdir + '/err_history_kinsol.txt', Problem.nAll)
+    np.savetxt(outdir + '/' + prefix + '_n_history.txt',   Problem.nAll)
+    np.savetxt(outdir + '/' + prefix + '_err_history.txt', Problem.errAll)
 
     # up to but not including last iteration
-    np.savetxt(outdir + '/flux_history_kinsol.txt',   Problem.fluxAll)
-    np.savetxt(outdir + '/D_history_kinsol.txt',      Problem.DAll)
-    np.savetxt(outdir + '/c_history_kinsol.txt',      Problem.cAll)
-    np.savetxt(outdir + '/D_EWMA_history_kinsol.txt', Problem.D_EWMAAll)
-    np.savetxt(outdir + '/c_EWMA_history_kinsol.txt', Problem.c_EWMAAll)
-    np.savetxt(outdir + '/resid_history_kinsol.txt',  Problem.residAll)
+    np.savetxt(outdir + '/' + prefix + '_flux_history.txt',   Problem.fluxAll)
+    np.savetxt(outdir + '/' + prefix + '_D_history.txt',      Problem.DAll)
+    np.savetxt(outdir + '/' + prefix + '_c_history.txt',      Problem.cAll)
+    np.savetxt(outdir + '/' + prefix + '_D_EWMA_history.txt', Problem.D_EWMAAll)
+    np.savetxt(outdir + '/' + prefix + '_c_EWMA_history.txt', Problem.c_EWMAAll)
+    np.savetxt(outdir + '/' + prefix + '_resid_history.txt',  Problem.residAll)
 
     # final plots
 
