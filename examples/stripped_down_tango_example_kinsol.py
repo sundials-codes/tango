@@ -459,6 +459,8 @@ def main():
     # output options
     parser.add_argument('--outputdir', type=str, default='output',
                         help='output directory')
+    parser.add_argument('--savealloutput', action='store_true',
+                        help='save all outputs to disk')
 
     # debugging options
     parser.add_argument('--debug', action='store_true',
@@ -527,18 +529,21 @@ def main():
         title = title + ', a = ' + str(args.alpha)
         title = title + ', b = ' + str(args.beta)
 
-    # full history
-    np.savetxt(outdir + '/' + prefix + '_n_history.txt',   Problem.nAll)
-    np.savetxt(outdir + '/' + prefix + '_err_history.txt', Problem.errAll)
-
-    # up to but not including last iteration
-    np.savetxt(outdir + '/' + prefix + '_flux_history.txt',   Problem.fluxAll)
-    np.savetxt(outdir + '/' + prefix + '_D_history.txt',      Problem.DAll)
-    np.savetxt(outdir + '/' + prefix + '_c_history.txt',      Problem.cAll)
-    np.savetxt(outdir + '/' + prefix + '_D_EWMA_history.txt', Problem.D_EWMAAll)
-    np.savetxt(outdir + '/' + prefix + '_c_EWMA_history.txt', Problem.c_EWMAAll)
-    np.savetxt(outdir + '/' + prefix + '_resid_history.txt',  Problem.residAll)
+    # always save residual history
     np.savetxt(outdir + '/' + prefix + '_Fresid_history.txt', Problem.FAll)
+
+    if args.savealloutput:
+        # full history
+        np.savetxt(outdir + '/' + prefix + '_n_history.txt',   Problem.nAll)
+        np.savetxt(outdir + '/' + prefix + '_err_history.txt', Problem.errAll)
+
+        # up to but not including last iteration
+        np.savetxt(outdir + '/' + prefix + '_flux_history.txt',   Problem.fluxAll)
+        np.savetxt(outdir + '/' + prefix + '_D_history.txt',      Problem.DAll)
+        np.savetxt(outdir + '/' + prefix + '_c_history.txt',      Problem.cAll)
+        np.savetxt(outdir + '/' + prefix + '_D_EWMA_history.txt', Problem.D_EWMAAll)
+        np.savetxt(outdir + '/' + prefix + '_c_EWMA_history.txt', Problem.c_EWMAAll)
+        np.savetxt(outdir + '/' + prefix + '_resid_history.txt',  Problem.residAll)
 
     # final plots
 
