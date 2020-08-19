@@ -538,6 +538,7 @@ def main():
     np.savetxt(outdir + '/' + prefix + '_D_EWMA_history.txt', Problem.D_EWMAAll)
     np.savetxt(outdir + '/' + prefix + '_c_EWMA_history.txt', Problem.c_EWMAAll)
     np.savetxt(outdir + '/' + prefix + '_resid_history.txt',  Problem.residAll)
+    np.savetxt(outdir + '/' + prefix + '_Fresid_history.txt', Problem.FAll)
 
     # final plots
 
