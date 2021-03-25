@@ -127,6 +127,12 @@ def main():
     parser.add_argument('--maxiters', type=int, default=200,
                         help='maximum number iterations')
 
+    # other options
+    parser.add_argument('--ignore', action='store_true',
+                        help='ignore negative values in the solution')
+    parser.add_argument('--clip', action='store_true',
+                        help='clip negative values in the solution')
+
     # norm option (only for plots right now since iteration always runs to max)
     parser.add_argument('--norm', type=str, default='RMS',
                         choices=['L2','RMS','Max'],
@@ -161,7 +167,6 @@ def main():
     # debugging options
     parser.add_argument('--debug', action='store_true',
                         help='enable debugging output')
-
 
     # parse command line args
     args = parser.parse_args()
@@ -252,8 +257,6 @@ def main():
         print("  IC stddev              =", args.IC_stddev)
     elif args.IC == 'solp':
         print("  IC dev                 =", args.IC_dev)
-
-
 
     # create and fill arrays for old time, old iteration, and current profile
     n_mminus1   = np.copy(n_IC)
@@ -348,11 +351,21 @@ def main():
         nAll[iterationNumber+1, :]   = profile
         errAll[iterationNumber+1, :] = profile - nss
 
+        numIters = numIters + 1
+
         # check
         if np.any(profile < 0) == True:
-            print(f'error.  negative value detected in profile at l={iterationNumber}')
-            numIters=iterationNumber + 1
-            break
+            if args.ignore:
+                print(f'Warning: ignoring negative values in profile at l={numIters}')
+            elif args.clip:
+                print(f'Warning: clipping negative values in profile at l={numIters}')
+                profile = np.where(profile < 0, 0, profile)
+            else:
+                print(f'Error: negative value detected in profile at l={numIters}')
+                where = np.argwhere(profile < 0)
+                for w in where:
+                    print("profile["+str(w[0])+"]"+" = "+str(profile[w[0]]))
+                break
 
     # finish
 

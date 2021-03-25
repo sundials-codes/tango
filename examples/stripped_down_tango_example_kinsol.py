@@ -239,7 +239,7 @@ class Problem:
         return profile_new
 
 
-    def solve(profile_old, maxIterations, beta):
+    def solve(profile_old, maxIterations, beta, ignore=False, clip=False):
 
         # create array for new profile
         profile_new = np.zeros_like(profile_old)
@@ -265,9 +265,18 @@ class Problem:
             Problem.numIters += 1
 
             # check
-            if np.any(profile_old < 0) == True:
-                print(f'error.  negative value detected in profile at l={iterationNumber}')
-                break
+            if np.any(profile_new < 0) == True:
+                if ignore:
+                    print(f'Warning: ignoring negative values in profile at l={Problem.numIters}')
+                elif clip:
+                    print(f'Warning: clipping negative values in profile at l={Problem.numIters}')
+                    profile_new = np.where(profile_new < 0, 0, profile_new)
+                else:
+                    print(f'Error: negative value detected in profile at l={Problem.numIters}')
+                    where = np.argwhere(profile_new < 0)
+                    for w in where:
+                        print("profile["+str(w[0])+"]"+" = "+str(profile_new[w[0]]))
+                    break
 
             # make new profile old
             profile_old = np.copy(profile_new)
@@ -444,6 +453,12 @@ def main():
     parser.add_argument('--maxIterations', type=int, default=200,
                         help='maximum number iterations')
 
+    # other options
+    parser.add_argument('--ignore', action='store_true',
+                        help='ignore negative values in the solution')
+    parser.add_argument('--clip', action='store_true',
+                        help='clip negative values in the solution')
+
     # KINSOL options
     parser.add_argument('--kinsol', action='store_true',
                         help='solve with KINSOL')
@@ -504,7 +519,8 @@ def main():
         nFinal = Problem.solveKINSOL(nInitial, args.maxIterations, beta=args.beta,
                                      m=args.mAA, delay=args.delayAA)
     else:
-        nFinal = Problem.solve(nInitial, args.maxIterations, args.beta)
+        nFinal = Problem.solve(nInitial, args.maxIterations, args.beta,
+                               ignore=args.ignore, clip=args.clip)
 
     # print final resiudal and error
     print("Finished:")
