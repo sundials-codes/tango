@@ -85,7 +85,6 @@ class Problem:
         # problem setup
         L  = args.L   # size of domain
         N  = args.N   # number of spatial grid points
-        n0 = args.n0  # boundary value at 0
         p  = args.p   # power for analytic flux
 
         Problem.dx    = L / (N - 1)                # spatial grid size
@@ -107,47 +106,67 @@ class Problem:
 
         Problem.fluxSplitter = lodestro_method.FluxSplit(thetaParams)
 
+        # compute the analytic steady state solution
+        Problem.nss = steady_state_solution(Problem.x, Problem.nL, p=p, L=L)
+
         # old time profile and initial guess
         n_IC = np.zeros_like(Problem.x)
+
         if args.IC == 'pow':
             # power law initial condition (q = 1 does not satisfy left BC)
-            q = args.q
+            n0 = args.IC_n0
+            q = args.IC_q
             n_IC[:] = ((Problem.nL - n0) / L**q) * Problem.x**q + n0
         elif args.IC == 'const':
-            # constant initial condition except at the right BC
-            c = args.c
-            n_IC[:-1] = c
-            n_IC[-1]  = Problem.nL
+            # constant initial condition
+            n_IC[:] = args.IC_const
+        elif args.IC == 'lin':
+            # line between true solution at left and right boundary
+            m = (Problem.nss[-1] - Problem.nss[0]) / L
+            n_IC[:] = m * Problem.x + Problem.nss[0]
+        elif args.IC == 'rand':
+            # true solution plus random noise
+            noise = np.random.normal(0, args.IC_stddev, Problem.nss.shape)
+            n_IC[:] = Problem.nss[:] + noise[:]
+        elif args.IC == 'solp':
+            # true solution plus fixed perturbation
+            n_IC[:] = Problem.nss[:] + args.IC_dev * Problem.nss[:]
         else:
-            n_IC[:] = nss[:]
+            # true solution
+            n_IC[:] = Problem.nss[:]
+
+        # enforce right BC for all inital conditions
+        n_IC[-1] = Problem.nL
 
         # set for old time
         Problem.n_mminus1 = np.copy(n_IC)
 
-        # compute the analytic steady state solution
-        Problem.nss = steady_state_solution(Problem.x, Problem.nL, p=p, L=L)
-
         # print problem setup to screen
         print("Tango Shestakov Example:")
-        print("  Domain size L        =", L)
-        print("  Mesh points N        =", N)
-        print("  Mesh spacing dx      =", Problem.dx)
-        print("  Initial condition    =", args.IC)
+        print("  Domain size L          =", L)
+        print("  Mesh points N          =", N)
+        print("  Mesh spacing dx        =", Problem.dx)
+        print("  Initial condition      =", args.IC)
+        print("  Right boundary value   =", Problem.nL)
+        print("  Time step size         =", Problem.dt)
+        print("  1st order edge         =", args.firstOrderEdge)
+        print("  D minimum              =", args.Dmin)
+        print("  D maximum              =", args.Dmax)
+        print("  dp/dx threshold        =", args.dpdxThreshold)
+        print("  Flux power             =", p)
+        print("  Relaxation alpha       =", Problem.alpha)
+        print("  Relaxation beta        =", args.beta)
+        print("  Max iterations         =", args.maxIterations)
+        print("  Initial condition      =", args.IC)
         if args.IC == 'pow':
-            print("  IC power             =", args.q)
+            print("  IC power               =", args.IC_q)
+            print("  IC value left boundary =", args.IC_n0)
         elif args.IC == 'const':
-            print("  IC const             =", args.c)
-        print("  Left boundary value  =", n0)
-        print("  Right boundary value =", Problem.nL)
-        print("  Time step size       =", Problem.dt)
-        print("  1st order edge       =", args.firstOrderEdge)
-        print("  D minimum            =", args.Dmin)
-        print("  D maximum            =", args.Dmax)
-        print("  dp/dx threshold      =", args.dpdxThreshold)
-        print("  Flux power           =", p)
-        print("  Relaxation alpha     =", Problem.alpha)
-        print("  Relaxation beta      =", args.beta)
-        print("  Max iterations       =", args.maxIterations)
+            print("  IC const               =", args.IC_const)
+        elif args.IC == 'rand':
+            print("  IC stddev              =", args.IC_stddev)
+        elif args.IC == 'solp':
+            print("  IC dev                 =", args.IC_dev)
 
         # initialize data storage for full history (initial to end)
         Problem.nAll   = np.zeros((args.maxIterations+1, N))
@@ -387,21 +406,27 @@ def main():
                         help='domain size [0,L]')
     parser.add_argument('--N', type=int, default=500,
                         help='number of spatial grid points')
-    parser.add_argument('--n0', type=float, default=2.0e-2,
-                        help='boundary value at x = 0 (left)')
     parser.add_argument('--nL', type=float, default=1.0e-2,
                         help='boundary value at x = L (right)')
-    parser.add_argument('--IC', type=str, default='pow',
-                        choices=['pow', 'const', 'sol'],
-                        help='set initial condition type')
-    parser.add_argument('--c', type=float, default=1.0,
-                        help='value for constant IC')
-    parser.add_argument('--q', type=float, default=1.0,
-                        help='power in pow IC')
     parser.add_argument('--dt', type=float, default=1e4,
                         help='time step size')
     parser.add_argument('--centerdiff', dest='firstOrderEdge', action='store_false',
                         help='use second order center differences in FluxModel')
+
+    # initial guess options
+    parser.add_argument('--IC', type=str, default='pow',
+                        choices=['pow', 'const', 'lin', 'rand', 'solp', 'sol'],
+                        help='set initial condition type')
+    parser.add_argument('--IC_n0', type=float, default=2.0e-2,
+                        help='boundary value at x = 0 (left) in pow IC')
+    parser.add_argument('--IC_q', type=float, default=1.0,
+                        help='power in pow IC')
+    parser.add_argument('--IC_const', type=float, default=1.0,
+                        help='value for constant IC')
+    parser.add_argument('--IC_stddev', type=float, default=0.001,
+                        help='standard deviation for rand IC')
+    parser.add_argument('--IC_dev', type=float, default=0.1,
+                        help='deviation for solp IC')
 
     # flux splitter options
     parser.add_argument('--Dmin', type=float, default=1e-5,
