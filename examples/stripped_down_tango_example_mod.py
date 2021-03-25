@@ -173,7 +173,7 @@ def main():
 
     #### create stuff
     maxIterations = args.maxiters
-    numIters = maxIterations
+    numIters = 0
     alpha = args.alpha  # relaxation parameter on the effective diffusion coefficient
     beta  = args.beta   # relaxation perameter on the profile
     p = args.p          # power for analytic flux
@@ -582,7 +582,7 @@ def main():
 
         # history range to plot
         min_iter = max(args.historyrange[0], 0)
-        max_iter = min(args.historyrange[1], maxIterations)
+        max_iter = min(args.historyrange[1], numIters)
         num_iter = max_iter - min_iter + 1;
 
         # set color cycle history plot lines

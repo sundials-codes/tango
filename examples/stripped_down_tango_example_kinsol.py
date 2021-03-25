@@ -770,7 +770,7 @@ def main():
 
         # history range to plot
         min_iter = max(args.historyrange[0], 0)
-        max_iter = min(args.historyrange[1], args.maxIterations)
+        max_iter = min(args.historyrange[1], Problem.numIters)
         num_iter = max_iter - min_iter + 1;
 
         # set color cycle history plot lines
