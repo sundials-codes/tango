@@ -13,7 +13,7 @@ coverage.xml
 .hypothesis/
 
 # Example output
-examples/output
+examples/output*
 
 # KINSOL log files
 *.log
