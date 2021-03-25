@@ -20,3 +20,6 @@ examples/output
 
 # Environment setup script
 env.sh
+
+# OSX
+.DS_Store
