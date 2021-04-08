@@ -457,7 +457,7 @@ def main():
                         help='Relaxation parameter for diffusion')
     parser.add_argument('--beta', type=float, default=1.0,
                         help='Relaxation parameter for profile')
-    parser.add_argument('--maxIterations', type=int, default=200,
+    parser.add_argument('--maxIterations', type=int, default=2000,
                         help='maximum number iterations')
 
     # other options
