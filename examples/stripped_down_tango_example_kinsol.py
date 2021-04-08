@@ -143,10 +143,10 @@ class Problem:
 
         # print problem setup to screen
         print("Tango Shestakov Example:")
+        print("  Use KINSOL             =", args.kinsol)
         print("  Domain size L          =", L)
         print("  Mesh points N          =", N)
         print("  Mesh spacing dx        =", Problem.dx)
-        print("  Initial condition      =", args.IC)
         print("  Right boundary value   =", Problem.nL)
         print("  Time step size         =", Problem.dt)
         print("  1st order edge         =", args.firstOrderEdge)
@@ -157,6 +157,8 @@ class Problem:
         print("  Relaxation alpha       =", Problem.alpha)
         print("  Relaxation beta        =", args.beta)
         print("  Max iterations         =", args.maxIterations)
+        print("  Acceleration depth     =", args.mAA)
+        print("  Acceleration delay     =", args.delayAA)
         print("  Initial condition      =", args.IC)
         if args.IC == 'pow':
             print("  IC power               =", args.IC_q)
@@ -335,6 +337,10 @@ class Problem:
         # specify stopping tolerance based on residual
         flag = kin.KINSetFuncNormTol(kmem, tol)
         if flag < 0: raise RuntimeError(f'KINSetFuncNormTol returned {flag}')
+
+        # ignore convergence test and run to max iterations
+        flag = kin.KINSetNumMaxIters(kmem, maxIterations)
+        if flag < 0: raise RuntimeError(f'KINSetUseMaxIters returned {flag}')
 
         # ignore convergence test and run to max iterations
         flag = kin.KINSetUseMaxIters(kmem, 1)
@@ -550,12 +556,14 @@ def main():
     # add a prefix for different configurations
     if args.kinsol:
         prefix = 'kinsol'
+        prefix = prefix + '_p_' + str(args.p)
         prefix = prefix + '_alpha_' + str(args.alpha)
         prefix = prefix + '_beta_' + str(args.beta)
         prefix = prefix + '_m_' + str(args.mAA)
         prefix = prefix + '_delay_' + str(args.delayAA)
 
         title = 'KINSOL'
+        title = title + ', p = ' + str(args.p)
         title = title + ', a = ' + str(args.alpha)
         title = title + ', b = ' + str(args.beta)
         title = title + ', m = ' + str(args.mAA)
@@ -563,10 +571,12 @@ def main():
 
     else:
         prefix = 'tango'
+        prefix = prefix + '_p_' + str(args.p)
         prefix = prefix + '_alpha_' + str(args.alpha)
         prefix = prefix + '_beta_' + str(args.beta)
 
         title = 'Tango'
+        title = title + ', p = ' + str(args.p)
         title = title + ', a = ' + str(args.alpha)
         title = title + ', b = ' + str(args.beta)
 
