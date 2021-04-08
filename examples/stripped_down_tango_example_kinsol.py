@@ -272,7 +272,8 @@ class Problem:
                     print(f'Warning: ignoring negative values in profile at l={Problem.numIters}')
                 elif clip:
                     print(f'Warning: clipping negative values in profile at l={Problem.numIters}')
-                    profile_new = np.where(profile_new < 0, 0, profile_new)
+                    clip_val = 1.0e-10
+                    profile_new = np.where(profile_new < 0, clip_val, profile_new)
                 else:
                     print(f'Error: negative value detected in profile at l={Problem.numIters}')
                     where = np.argwhere(profile_new < 0)
