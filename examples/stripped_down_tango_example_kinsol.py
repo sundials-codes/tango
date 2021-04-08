@@ -22,6 +22,9 @@ from tango import derivatives
 from tango import HToMatrixFD
 from tango import lodestro_method
 
+# slightly modified version of tango's noisyflux
+import noisyflux_mod as noisyflux
+
 import kinsol as kin
 
 # ****** Solution ****** #
@@ -97,7 +100,16 @@ class Problem:
         Problem.numIters  = 0  # number of fixed point iterations
 
         # instantiate flux model
-        Problem.fluxModel = FluxModel(Problem.dx, p=p, firstOrderEdge=args.firstOrderEdge)
+        if args.addnoise:
+            fluxModel = FluxModel(Problem.dx, p=p,
+                                  firstOrderEdge=args.firstOrderEdge)
+            Problem.fluxModel = noisyflux.NoisyFlux(fluxModel,
+                                                    args.noise_amplitude,
+                                                    args.noise_Lac,
+                                                    Problem.dx)
+        else:
+            Problem.fluxModel = FluxModel(Problem.dx, p=p,
+                                          firstOrderEdge=args.firstOrderEdge)
 
         # initialize FluxSplitter.
         # for many problems, the exact value of these parameters doesn't matter too much.
@@ -451,6 +463,14 @@ def main():
                         help='Maximum D value')
     parser.add_argument('--dpdxThreshold', type=float, default=10,
                         help='dpdx threshold value')
+
+    # noisy flux options
+    parser.add_argument('--addnoise', action='store_true',
+                        help='add noise to flux values')
+    parser.add_argument('--noise_Lac', type=float, default=0.2,
+                        help='correlation length of noise')
+    parser.add_argument('--noise_amplitude', type=float, default=0.1,
+                        help='amplitude of noise')
 
     # relaxation and iteration options
     parser.add_argument('--alpha', type=float, default=0.1,
