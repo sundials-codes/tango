@@ -796,7 +796,7 @@ def main():
             # plot solution history
             fig, ax = plt.subplots()
             for i in range(min_iter, max_iter + 1):
-                ax.plot(Problem.x, Problem.nAll[i], label=i)
+                ax.plot(Problem.x, Problem.nAll[i], label=i, marker='o')
             plt.plot(Problem.x, Problem.nss, 'k--', label='analytic solution')
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
