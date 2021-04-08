@@ -643,21 +643,21 @@ def main():
                         plt_idx = i
                         break
 
-            plt.figure()
-            plt.semilogy(iters, res_nrm, nonpositive='clip', label='residual')
-            if args.plotref:
-                plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
+            # plt.figure()
+            # plt.semilogy(iters, res_nrm, nonpositive='clip', label='residual')
+            # if args.plotref:
+            #     plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--', nonpositive='clip', label='1st order')
 
-            plt.xlabel('Iteration')
-            if args.norm == 'L2':
-                plt.ylabel('$||R||_{L2}$')
-            elif args.norm == 'RMS':
-                plt.ylabel('$||R||_{RMS}$')
-            else:
-                plt.ylabel('$||R||_{max}$')
-            plt.title('Residual History: ' + title)
-            plt.legend(loc='best')
-            plt.grid()
+            # plt.xlabel('Iteration')
+            # if args.norm == 'L2':
+            #     plt.ylabel('$||R||_{L2}$')
+            # elif args.norm == 'RMS':
+            #     plt.ylabel('$||R||_{RMS}$')
+            # else:
+            #     plt.ylabel('$||R||_{max}$')
+            # plt.title('Residual History: ' + title)
+            # plt.legend(loc='best')
+            # plt.grid()
 
             # plot F residual norm history
             resF_nrm = np.zeros((Problem.numIters, 1))
