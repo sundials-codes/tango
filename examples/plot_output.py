@@ -4,7 +4,7 @@
 def main():
 
     import argparse
-
+    import os
     import numpy as np
     import matplotlib.pyplot as plt
 
@@ -67,7 +67,7 @@ def main():
     for outfile in args.outfiles:
 
         # parse file name to get run settings
-        fname = outfile.split("_")
+        fname = os.path.basename(outfile).split("_")
 
         # get method name and parameters, set title
         if "kinsol" in fname[0]:
@@ -150,10 +150,10 @@ def main():
         for i in iters:
             if nrm[i] < args.rthresh:
                 found = True
-                print(fcount, i, nrm[i])
+                print(outfile, fcount, i, nrm[i])
                 break
         if not found:
-            print(fcount, iters[-1], nrm[-1])
+            print(outfile, fcount, iters[-1], nrm[-1])
 
         # convergence rate reference line
         if args.plotref and fcount == args.refidx:
