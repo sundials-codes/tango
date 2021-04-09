@@ -36,6 +36,10 @@ def main():
                         help='information to include in the legend')
     parser.add_argument('--legendoutside', action='store_true',
                         help='place legend outside plot')
+    parser.add_argument('--save', action='store_true',
+                        help='save figure to file')
+    parser.add_argument('--figname', type=str, default="fig.pdf",
+                        help='set the plot title')
 
     # reference line options
     parser.add_argument('--refidx', type=int, default=0,
@@ -203,13 +207,17 @@ def main():
         plt.title(args.title)
     else:
         plt.title('Residual History')
-    if args.legendinfo or args.plotref:
+    if args.legendinfo or args.legend or args.plotref:
         if (args.legendoutside):
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
         else:
             ax.legend(loc='best')
     plt.grid()
-    plt.show()
+
+    if args.save:
+        plt.savefig(args.figname, bbox_inches='tight')
+    else:
+        plt.show()
 
 
 # ****** create legend label ****** #

@@ -252,7 +252,10 @@ def main():
         figname += '_p_' + str(power)
         figname += '.pdf'
 
-    # table = [[np.nan for i in range(len(cvals))] for j in range(len(rvals))]
+
+    # ensure row and column values are sorted
+    rvals.sort()
+    cvals.sort()
 
     table = np.empty([len(rvals), len(cvals)])
     table[:] = np.nan
