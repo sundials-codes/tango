@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
+
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw={}, cbarlabel="", **kwargs):
     """
@@ -125,13 +126,11 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     return texts
 
 
-
 def find_first(lst, a):
 
     for i, x in enumerate(lst):
         if x == a:
             return i
-
 
 
 # ****** Main ***** #
@@ -143,7 +142,7 @@ def main():
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
-    import statistics as stat
+    # import statistics as stat
 
     parser = argparse.ArgumentParser(description='Run Shestakov example')
 
@@ -161,10 +160,9 @@ def main():
     parser.add_argument('--save', action='store_true',
                         help='save figure to file')
 
-
     # plot options
     parser.add_argument('--norm', type=str, default='RMS',
-                        choices=['L2','RMS','Max'],
+                        choices=['L2', 'RMS', 'Max'],
                         help='norm to use in plots')
 
     # debugging options
@@ -173,9 +171,6 @@ def main():
 
     # parse command line args
     args = parser.parse_args()
-
-    # iterate over output files and add to plot
-    fcount = 0
 
     # create figure and axes
     fig, ax = plt.subplots()
@@ -194,11 +189,11 @@ def main():
 
         # get method name and parameters, set title
         if "kinsol" in fname[0]:
-            method  = "KINSOL"
-            power   = fname[2]
-            alpha   = fname[4]
-            beta    = fname[6]
-            mAA     = fname[8]
+            method = "KINSOL"
+            power = fname[2]
+            alpha = fname[4]
+            beta = fname[6]
+            mAA = fname[8]
             delayAA = fname[10]
 
             if args.debug:
@@ -212,9 +207,9 @@ def main():
 
         elif "tango" in fname[0]:
             method = "Tango"
-            power  = fname[2]
-            alpha  = fname[4]
-            beta   = fname[6]
+            power = fname[2]
+            alpha = fname[4]
+            beta = fname[6]
 
             if args.debug:
                 print(alpha)
@@ -227,7 +222,6 @@ def main():
         else:
             print('ERROR: Unknown method')
             sys.exit()
-
 
     if args.debug:
         print(rvals)
@@ -255,9 +249,9 @@ def main():
         figname += '_p_' + str(power)
         figname += '.pdf'
 
-    #table = [[np.nan for i in range(len(cvals))] for j in range(len(rvals))]
+    # table = [[np.nan for i in range(len(cvals))] for j in range(len(rvals))]
 
-    table    = np.empty([len(rvals),len(cvals)])
+    table = np.empty([len(rvals), len(cvals)])
     table[:] = np.nan
 
     if args.debug:
@@ -273,11 +267,11 @@ def main():
 
         # get method name and parameters, set title
         if "kinsol" in fname[0]:
-            method  = "KINSOL"
-            power   = fname[2]
-            alpha   = fname[4]
-            beta    = fname[6]
-            mAA     = fname[8]
+            method = "KINSOL"
+            power = fname[2]
+            alpha = fname[4]
+            beta = fname[6]
+            mAA = fname[8]
             delayAA = fname[10]
 
             ridx = find_first(rvals, beta)
@@ -285,9 +279,9 @@ def main():
 
         elif "tango" in fname[0]:
             method = "Tango"
-            power  = fname[2]
-            alpha  = fname[4]
-            beta   = fname[6]
+            power = fname[2]
+            alpha = fname[4]
+            beta = fname[6]
 
             ridx = find_first(rvals, alpha)
             cidx = find_first(cvals, 0)
@@ -313,13 +307,13 @@ def main():
 
         if args.norm == 'L2':
             for i in iters:
-                nrm[i] = np.sqrt(np.sum(data[i,:]**2))  # L2
+                nrm[i] = np.sqrt(np.sum(data[i, :]**2))   # L2
         elif args.norm == 'RMS':
             for i in iters:
-                nrm[i] = np.sqrt(np.mean(data[i,:]**2)) # RMS
+                nrm[i] = np.sqrt(np.mean(data[i, :]**2))  # RMS
         else:
             for i in iters:
-                nrm[i] = np.amax(np.abs(data[i,:]))     # Max
+                nrm[i] = np.amax(np.abs(data[i, :]))      # Max
 
         # print out the first iteration below a given threshold
         # or the final iteratio if the threshold is not crossed
@@ -328,10 +322,8 @@ def main():
                 table[ridx][cidx] = i
                 break
 
-
     if args.debug:
         print(table)
-
 
     miniter = np.nanmin(table)
     print(miniter)
@@ -339,7 +331,7 @@ def main():
         table = table / miniter
 
     cmap = mpl.cm.coolwarm
-    #bounds = miniter * np.linspace(0.1, 2.0, num=20)
+    # bounds = miniter * np.linspace(0.1, 2.0, num=20)
     bounds = miniter * np.linspace(1.0, 2.0, num=20)
     norm = mpl.colors.BoundaryNorm(bounds, cmap.N, extend='max')
 
@@ -347,14 +339,13 @@ def main():
                  cmap=cmap, norm=norm)
 
     if args.relative:
-        texts = annotate_heatmap(im, valfmt="{x:.1f}", fontsize="xx-small")
+        annotate_heatmap(im, valfmt="{x:.1f}", fontsize="xx-small")
     else:
-        texts = annotate_heatmap(im, valfmt="{x:.0f}", fontsize="xx-small")
+        annotate_heatmap(im, valfmt="{x:.0f}", fontsize="xx-small")
 
-    #hm = heatmap2(table, rvals, cvals, ax=ax)
+    # hm = heatmap2(table, rvals, cvals, ax=ax)
 
     plt.title(prefix)
-
 
     if method == "KINSOL":
         ax.set_ylabel("beta")
