@@ -201,19 +201,55 @@ class Problem:
             print("  IC dev                 =", args.IC_dev)
 
         # full history (initial to end)
-        Problem.nAll = np.zeros((args.maxIterations+1, N))
-        Problem.errAll = np.zeros_like(Problem.nAll)
+        if 'profile' in args.save:
+            Problem.n_hist = np.zeros((args.maxIterations+1, N))
+        else:
+            Problem.n_hist = None
+
+        if 'error' in args.save:
+            Problem.err_hist = np.zeros((args.maxIterations+1, N))
+        else:
+            Problem.err_hist = None
 
         # history excluding last iteration (initial to end - 1)
-        Problem.fluxAll = np.zeros((args.maxIterations, N))
-        Problem.DAll = np.zeros_like(Problem.fluxAll)
-        Problem.cAll = np.zeros_like(Problem.fluxAll)
-        Problem.D_EWMAAll = np.zeros_like(Problem.fluxAll)
-        Problem.c_EWMAAll = np.zeros_like(Problem.fluxAll)
-        Problem.residAll = np.zeros_like(Problem.fluxAll)
-        Problem.FAll = np.zeros_like(Problem.fluxAll)
+        if 'flux' in args.save:
+            Problem.flux_hist = np.zeros((args.maxIterations, N))
+        else:
+            Problem.flux_hist = None
 
-        Problem.wrmsResidHistory = np.zeros(args.maxIterations)
+        if 'D' in args.save:
+            Problem.D_hist = np.zeros((args.maxIterations, N))
+        else:
+            Problem.D_hist = None
+
+        if 'c' in args.save:
+            Problem.c_hist = np.zeros((args.maxIterations, N))
+        else:
+            Problem.c_hist = None
+
+        if 'D_EWMA' in args.save:
+            Problem.D_EWMA_hist = np.zeros((args.maxIterations, N))
+        else:
+            Problem.D_EWMA_hist = None
+
+        if 'c_EWMA' in args.save:
+            Problem.c_EWMA_hist = np.zeros((args.maxIterations, N))
+        else:
+            Problem.c_EWMA_hist = None
+
+        if 'residual' in args.save:
+            Problem.resid_hist = np.zeros((args.maxIterations, N))
+        else:
+            Problem.resid_hist = None
+
+        # always save residual history
+        Problem.F_hist = np.zeros((args.maxIterations, N))
+
+        # history (iterations)
+        if 'residual_norm' in args.save:
+            Problem.wrmsResidHistory = np.zeros(args.maxIterations)
+        else:
+            Problem.wrmsResidHistory = None
 
     def Gfun(profile_old):
 
@@ -265,20 +301,26 @@ class Problem:
         wrmsResid = np.sqrt(np.mean((resid / np.max(np.abs(f)))**2))
 
         # save data for plots
-        Problem.fluxAll[Problem.numGEvals, :] = flux
-        Problem.DAll[Problem.numGEvals, :] = D
-        Problem.cAll[Problem.numGEvals, :] = c
-        Problem.D_EWMAAll[Problem.numGEvals, :] = Problem.D_EWMA
-        Problem.c_EWMAAll[Problem.numGEvals, :] = Problem.c_EWMA
-        Problem.residAll[Problem.numGEvals, :] = resid
-
-        Problem.wrmsResidHistory[Problem.numGEvals] = wrmsResid
+        if Problem.flux_hist is not None:
+            Problem.flux_hist[Problem.numGEvals, :] = flux
+        if Problem.D_hist is not None:
+            Problem.D_hist[Problem.numGEvals, :] = D
+        if Problem.c_hist is not None:
+            Problem.c_hist[Problem.numGEvals, :] = c
+        if Problem.D_EWMA_hist is not None:
+            Problem.D_EWMA_hist[Problem.numGEvals, :] = Problem.D_EWMA
+        if Problem.c_EWMA_hist is not None:
+            Problem.c_EWMA_hist[Problem.numGEvals, :] = Problem.c_EWMA
+        if Problem.resid_hist is not None:
+            Problem.resid_hist[Problem.numGEvals, :] = resid
+        if Problem.wrmsResidHistory is not None:
+            Problem.wrmsResidHistory[Problem.numGEvals] = wrmsResid
 
         # solve matrix equation for new profile n_{i+1} = G(n_i)
         profile_new = HToMatrixFD.solve(A, B, C, f)
 
         # compute F_i = G(n_i) - n_i
-        Problem.FAll[Problem.numGEvals, :] = profile_new - profile_old
+        Problem.F_hist[Problem.numGEvals, :] = profile_new - profile_old
 
         # update number of G evals
         Problem.numGEvals += 1
@@ -291,8 +333,10 @@ class Problem:
         profile_new = np.zeros_like(profile_old)
 
         # save the initial profile and error
-        Problem.nAll[0, :] = profile_old
-        Problem.errAll[0, :] = profile_old - Problem.nss
+        if Problem.n_hist is not None:
+            Problem.n_hist[0, :] = profile_old
+        if Problem.err_hist is not None:
+            Problem.err_hist[0, :] = profile_old - Problem.nss
 
         # perform fixed point iteration
         for iterationNumber in np.arange(0, maxIterations):
@@ -304,8 +348,10 @@ class Problem:
             profile_new[:] = beta * profile_new + (1.0 - beta) * profile_old
 
             # save new profile and compute new error
-            Problem.nAll[iterationNumber + 1, :] = profile_new
-            Problem.errAll[iterationNumber + 1, :] = profile_new - Problem.nss
+            if Problem.n_hist is not None:
+                Problem.n_hist[iterationNumber + 1, :] = profile_new
+            if Problem.err_hist is not None:
+                Problem.err_hist[iterationNumber + 1, :] = profile_new - Problem.nss
 
             # update iteration count
             Problem.numIters += 1
@@ -343,8 +389,10 @@ class Problem:
 
         if Problem.numGEvals > 0:
             # save new profile and compute new error
-            Problem.nAll[Problem.numGEvals, :] = profile_old
-            Problem.errAll[Problem.numGEvals, :] = profile_old - Problem.nss
+            if Problem.n_hist is not None:
+                Problem.n_hist[Problem.numGEvals, :] = profile_old
+            if Problem.err_hist is not None:
+                Problem.err_hist[Problem.numGEvals, :] = profile_old - Problem.nss
 
         profile_new[:] = Problem.Gfun(profile_old)
 
@@ -357,8 +405,10 @@ class Problem:
                     delay=0):
 
         # save the initial profile and error
-        Problem.nAll[0, :] = profile_old
-        Problem.errAll[0, :] = profile_old - Problem.nss
+        if Problem.n_hist is not None:
+            Problem.n_hist[0, :] = profile_old
+        if Problem.err_hist is not None:
+            Problem.err_hist[0, :] = profile_old - Problem.nss
 
         # solution and scaling arrays
         profile_new = np.copy(profile_old)
@@ -450,8 +500,10 @@ class Problem:
             print('KINSol finished')
 
         # save final profile and error
-        Problem.nAll[Problem.numGEvals, :] = profile_new
-        Problem.errAll[Problem.numGEvals, :] = profile_new - Problem.nss
+        if Problem.n_hist is not None:
+            Problem.n_hist[Problem.numGEvals, :] = profile_new
+        if Problem.err_hist is not None:
+            Problem.err_hist[Problem.numGEvals, :] = profile_new - Problem.nss
 
         # Print solution and solver statistics
         flag, fnorm = kin.KINGetFuncNorm(kmem)
@@ -551,28 +603,18 @@ def main():
                         help='norm to use in plots')
 
     #  plotting options
-    parser.add_argument('--plotall', action='store_true',
-                        help='enable all plot options')
     parser.add_argument('--noplots', dest='makeplots', action='store_false',
                         help='disable all plot options')
-    parser.add_argument('--nosolutionplot', dest='plotfinalsolution',
-                        action='store_false',
-                        help='disable final solution plot')
-    parser.add_argument('--noconvplot', dest='plotconvergence',
-                        action='store_false',
-                        help='disable convergence plots')
     parser.add_argument('--plotfinalreserr', action='store_true',
                         help='enable final residual and error plots')
-    parser.add_argument('--plotsolutionhistory', action='store_true',
-                        help='enable solution history plot')
-    parser.add_argument('--plotreserrhistory', action='store_true',
-                        help='enable residual and error history plots')
+    parser.add_argument('--plothistory', action='store_true',
+                        help='enable history plots')
     parser.add_argument('--plotfluxdchistory', action='store_true',
                         help='enable flux, D, and c history plots')
     parser.add_argument('--historyrange', type=int, nargs=2, default=[0, 200],
                         help='iterations to use in history plots (inclusive)')
-    parser.add_argument('--noref', dest='plotref', action='store_false',
-                        help='disable convergence rate reference line')
+    parser.add_argument('--ref', dest='plotref', action='store_true',
+                        help='enable convergence rate reference line')
     parser.add_argument('--refidx', type=int, nargs=3, default=[100, 50, 10],
                         help='''index to use for convergence reference line
                         (resid, F resid, err)''')
@@ -580,8 +622,14 @@ def main():
     # output options
     parser.add_argument('--outputdir', type=str, default='output',
                         help='output directory')
-    parser.add_argument('--savealloutput', action='store_true',
-                        help='save all outputs to disk')
+    parser.add_argument('--save', type=str, nargs='+',
+                        choices=['profile', 'error', 'flux', 'D', 'c',
+                                 'D_EWMA', 'c_EWMA', 'residual', 'F_residual',
+                                 'residual_norm'],
+                        default=[],
+                        help='''while values to save''')
+    # parser.add_argument('--savealloutput', action='store_true',
+    #                     help='save all outputs to disk')
 
     # debugging options
     parser.add_argument('--debug', action='store_true',
@@ -607,17 +655,17 @@ def main():
     # print final resiudal and error
     print("Finished:")
     print("  Interations =", Problem.numIters)
-    if args.norm == 'L2':
-        res_nrm = np.sqrt(np.sum(Problem.residAll[-1, :]**2))
-        err_nrm = np.sqrt(np.sum(Problem.errAll[-1, :]**2))
-    elif args.norm == 'RMS':
-        res_nrm = np.sqrt(np.mean(Problem.residAll[-1, :]**2))
-        err_nrm = np.sqrt(np.mean(Problem.errAll[-1, :]**2))
-    else:
-        res_nrm = np.amax(np.abs(Problem.residAll[-1, :]))
-        err_nrm = np.amax(np.abs(Problem.errAll[-1, :]))
-    print("  Residual (" + args.norm + " norm) =", res_nrm)
-    print("  Error    (" + args.norm + " norm) =", err_nrm)
+    # if args.norm == 'L2':
+    #     res_nrm = np.sqrt(np.sum(Problem.resid_hist[-1, :]**2))
+    #     err_nrm = np.sqrt(np.sum(Problem.err_hist[-1, :]**2))
+    # elif args.norm == 'RMS':
+    #     res_nrm = np.sqrt(np.mean(Problem.resid_hist[-1, :]**2))
+    #     err_nrm = np.sqrt(np.mean(Problem.err_hist[-1, :]**2))
+    # else:
+    #     res_nrm = np.amax(np.abs(Problem.resid_hist[-1, :]))
+    #     err_nrm = np.amax(np.abs(Problem.err_hist[-1, :]))
+    # print("  Residual (" + args.norm + " norm) =", res_nrm)
+    # print("  Error    (" + args.norm + " norm) =", err_nrm)
 
     # iteration range to plot
 
@@ -641,6 +689,8 @@ def main():
         prefix = prefix + '_beta_' + str(args.beta)
         prefix = prefix + '_m_' + str(args.mAA)
         prefix = prefix + '_delay_' + str(args.delayAA)
+        if args.addnoise:
+            prefix = prefix + '_noise'
 
         title = 'KINSOL'
         title = title + ', p = ' + str(args.p)
@@ -648,67 +698,93 @@ def main():
         title = title + ', b = ' + str(args.beta)
         title = title + ', m = ' + str(args.mAA)
         title = title + ', d = ' + str(args.delayAA)
+        if args.addnoise:
+            prefix = title + 'with noise'
 
     else:
         prefix = 'tango'
         prefix = prefix + '_p_' + str(args.p)
         prefix = prefix + '_alpha_' + str(args.alpha)
         prefix = prefix + '_beta_' + str(args.beta)
+        if args.addnoise:
+            prefix = prefix + '_noise'
 
         title = 'Tango'
         title = title + ', p = ' + str(args.p)
         title = title + ', a = ' + str(args.alpha)
         title = title + ', b = ' + str(args.beta)
+        if args.addnoise:
+            prefix = title + 'with noise'
 
-    # always save residual history
-    np.savetxt(outdir + '/' + prefix + '_Fresid_history.txt', Problem.FAll)
-
-    if args.savealloutput:
-        # full history
-        np.savetxt(outdir + '/' + prefix + '_n_history.txt',   Problem.nAll)
-        np.savetxt(outdir + '/' + prefix + '_err_history.txt', Problem.errAll)
-
-        # up to but not including last iteration
+    # full history
+    if 'profile' in args.save:
+        np.savetxt(outdir + '/' + prefix + '_n_history.txt',   Problem.n_hist)
+    if 'error' in args.save:
+        np.savetxt(outdir + '/' + prefix + '_err_history.txt', Problem.err_hist)
+    # up to but not including last iteration
+    if 'flux' in args.save:
         np.savetxt(outdir + '/' + prefix + '_flux_history.txt',
-                   Problem.fluxAll)
+                   Problem.flux_hist)
+    if 'D' in args.save:
         np.savetxt(outdir + '/' + prefix + '_D_history.txt',
-                   Problem.DAll)
+                   Problem.D_hist)
+    if 'c' in args.save:
         np.savetxt(outdir + '/' + prefix + '_c_history.txt',
-                   Problem.cAll)
+                   Problem.c_hist)
+    if 'D_EWMA' in args.save:
         np.savetxt(outdir + '/' + prefix + '_D_EWMA_history.txt',
-                   Problem.D_EWMAAll)
+                   Problem.D_EWMA_hist)
+    if 'c_EWMA' in args.save:
         np.savetxt(outdir + '/' + prefix + '_c_EWMA_history.txt',
-                   Problem.c_EWMAAll)
+                   Problem.c_EWMA_hist)
+    if 'residual' in args.save:
         np.savetxt(outdir + '/' + prefix + '_resid_history.txt',
-                   Problem.residAll)
+                   Problem.resid_hist)
+    if 'F_residual' in args.save:
+        np.savetxt(outdir + '/' + prefix + '_Fresid_history.txt',
+                   Problem.F_hist)
+    if 'residual_norm' in args.save:
+        np.savetxt(outdir + '/' + prefix + '_resid_norm.txt',
+                   Problem.wrmsResidHistory)
+
+    # save residual norm history
+    resF_nrm = np.zeros((Problem.numIters, 1))
+    for i in iters:
+        if args.norm == 'L2':
+            resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
+        elif args.norm == 'RMS':
+            resF_nrm[i] = np.sqrt(np.mean(Problem.F_hist[i, :]**2))
+        else:
+            resF_nrm[i] = np.amax(np.abs(Problem.F_hist[i, :]))
+    np.savetxt(outdir + '/' + prefix + '_Fresid_' + args.norm + '_history.txt',
+               resF_nrm)
+
 
     # final plots
 
     if args.makeplots:
 
-        if (args.plotall or args.plotfinalsolution):
+        # plot final solution
+        plt.figure()
+        plt.plot(Problem.x, nFinal, label='numerical solution')
+        plt.plot(Problem.x, Problem.nss, 'k--', label='analytic solution')
+        plt.xlabel('x')
+        plt.ylabel('n')
+        plt.title('Final Solution: ' + title)
+        plt.legend(loc='best')
+        plt.grid()
 
-            # plot final solution
-            plt.figure()
-            plt.plot(Problem.x, nFinal, label='numerical solution')
-            plt.plot(Problem.x, Problem.nss, 'k--', label='analytic solution')
-            plt.xlabel('x')
-            plt.ylabel('n')
-            plt.title('Final Solution: ' + title)
-            plt.legend(loc='best')
-            plt.grid()
-
-        if (args.plotall or args.plotconvergence):
+        if 'residual' in args.save:
 
             # plot residual norm history
             res_nrm = np.zeros((Problem.numIters, 1))
             for i in iters:
                 if args.norm == 'L2':
-                    res_nrm[i] = np.sqrt(np.sum(Problem.residAll[i, :]**2))
+                    res_nrm[i] = np.sqrt(np.sum(Problem.resid_hist[i, :]**2))
                 elif args.norm == 'RMS':
-                    res_nrm[i] = np.sqrt(np.mean(Problem.residAll[i, :]**2))
+                    res_nrm[i] = np.sqrt(np.mean(Problem.resid_hist[i, :]**2))
                 else:
-                    res_nrm[i] = np.amax(np.abs(Problem.residAll[i, :]))
+                    res_nrm[i] = np.amax(np.abs(Problem.resid_hist[i, :]))
 
             # convergence rate reference line
             if args.plotref:
@@ -729,33 +805,35 @@ def main():
                         plt_idx = i
                         break
 
-            # plt.figure()
-            # plt.semilogy(iters, res_nrm, nonpositive='clip',
-            #              label='residual')
-            # if args.plotref:
-            #     plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--',
-            #                  nonpositive='clip', label='1st order')
+            plt.figure()
+            plt.semilogy(iters, res_nrm, nonpositive='clip',
+                         label='residual')
+            if args.plotref:
+                plt.semilogy(iters[:plt_idx+1], res_ref[:plt_idx+1], 'k--',
+                             nonpositive='clip', label='1st order')
 
-            # plt.xlabel('Iteration')
-            # if args.norm == 'L2':
-            #     plt.ylabel('$||R||_{L2}$')
-            # elif args.norm == 'RMS':
-            #     plt.ylabel('$||R||_{RMS}$')
-            # else:
-            #     plt.ylabel('$||R||_{max}$')
-            # plt.title('Residual History: ' + title)
-            # plt.legend(loc='best')
-            # plt.grid()
+            plt.xlabel('Iteration')
+            if args.norm == 'L2':
+                plt.ylabel('$||R||_{L2}$')
+            elif args.norm == 'RMS':
+                plt.ylabel('$||R||_{RMS}$')
+            else:
+                plt.ylabel('$||R||_{max}$')
+            plt.title('Residual History: ' + title)
+            plt.legend(loc='best')
+            plt.grid()
+
+        if 'F_residual' in args.save:
 
             # plot F residual norm history
             resF_nrm = np.zeros((Problem.numIters, 1))
             for i in iters:
                 if args.norm == 'L2':
-                    resF_nrm[i] = np.sqrt(np.sum(Problem.FAll[i, :]**2))
+                    resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
                 elif args.norm == 'RMS':
-                    resF_nrm[i] = np.sqrt(np.mean(Problem.FAll[i, :]**2))
+                    resF_nrm[i] = np.sqrt(np.mean(Problem.F_hist[i, :]**2))
                 else:
-                    resF_nrm[i] = np.amax(np.abs(Problem.FAll[i, :]))
+                    resF_nrm[i] = np.amax(np.abs(Problem.F_hist[i, :]))
 
             # convergence rate reference line
             if args.plotref:
@@ -792,15 +870,18 @@ def main():
             plt.legend(loc='best')
             plt.grid()
 
+
+        if 'error' in args.save:
+
             # plot error norm history
             err_nrm = np.zeros((Problem.numIters + 1, 1))
             for i in itersp1:
                 if args.norm == 'L2':
-                    err_nrm[i] = np.sqrt(np.sum(Problem.errAll[i, :]**2))
+                    err_nrm[i] = np.sqrt(np.sum(Problem.err_hist[i, :]**2))
                 elif args.norm == 'RMS':
-                    err_nrm[i] = np.sqrt(np.mean(Problem.errAll[i, :]**2))
+                    err_nrm[i] = np.sqrt(np.mean(Problem.err_hist[i, :]**2))
                 else:
-                    err_nrm[i] = np.amax(np.abs(Problem.errAll[i, :]))
+                    err_nrm[i] = np.amax(np.abs(Problem.err_hist[i, :]))
 
             # convergence rate reference line
             if args.plotref:
@@ -839,34 +920,39 @@ def main():
             plt.legend(loc='best')
             plt.grid()
 
-        if (args.plotall or args.plotfinalreserr):
 
-            # plot final absolute residual
-            res = np.abs(Problem.residAll[-1, :])
-            plt.figure()
-            plt.semilogy(Problem.x, res)
-            plt.xlabel('x')
-            plt.ylabel(r'$\|R\|$')
-            plt.title('Final Absolute Residual: ' + title)
-            plt.grid()
+        if args.plotfinalreserr:
 
-            # plot final absolute F residual
-            resF = np.abs(Problem.FAll[-1, :])
-            plt.figure()
-            plt.semilogy(Problem.x, resF)
-            plt.xlabel('x')
-            plt.ylabel(r'$\|F_i = G(n_i) - n_i\|$')
-            plt.title('Final Absolute F Resiudal: ' + title)
-            plt.grid()
+            if 'residual' in args.save:
+                # plot final absolute residual
+                res = np.abs(Problem.resid_hist[-1, :])
+                plt.figure()
+                plt.semilogy(Problem.x, res)
+                plt.xlabel('x')
+                plt.ylabel(r'$\|R\|$')
+                plt.title('Final Absolute Residual: ' + title)
+                plt.grid()
 
-            # plot final absolute error
-            err = np.abs(Problem.errAll[-1, :])
-            plt.figure()
-            plt.semilogy(Problem.x, err)
-            plt.xlabel('x')
-            plt.ylabel(r'$\|n - n_{ss}\|$')
-            plt.title('Final Absolute Error: ' + title)
-            plt.grid()
+            if 'F_residual' in args.save:
+                # plot final absolute F residual
+                resF = np.abs(Problem.F_hist[-1, :])
+                plt.figure()
+                plt.semilogy(Problem.x, resF)
+                plt.xlabel('x')
+                plt.ylabel(r'$\|F_i = G(n_i) - n_i\|$')
+                plt.title('Final Absolute F Resiudal: ' + title)
+                plt.grid()
+
+            if 'error' in args.save:
+                # plot final absolute error
+                err = np.abs(Problem.err_hist[-1, :])
+                plt.figure()
+                plt.semilogy(Problem.x, err)
+                plt.xlabel('x')
+                plt.ylabel(r'$\|n - n_{ss}\|$')
+                plt.title('Final Absolute Error: ' + title)
+                plt.grid()
+
 
         # history range to plot
         min_iter = max(args.historyrange[0], 0)
@@ -886,12 +972,12 @@ def main():
             mpl.rcParams['axes.prop_cycle'] = plt.cycler('color',
                                                          plt.cm.tab10(cls))
 
-        if (args.plotall or args.plotsolutionhistory):
+        if 'profile' in args.save:
 
             # plot solution history
             fig, ax = plt.subplots()
             for i in range(min_iter, max_iter + 1):
-                ax.plot(Problem.x, Problem.nAll[i], label=i, marker='o')
+                ax.plot(Problem.x, Problem.n_hist[i], label=i, marker='o')
             plt.plot(Problem.x, Problem.nss, 'k--', label='analytic solution')
             ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
             plt.xlabel('x')
@@ -899,127 +985,129 @@ def main():
             plt.title('Solution History: ' + title)
             plt.grid()
 
-        if (args.plotall or args.plotreserrhistory):
+        if args.plothistory:
 
-            # plot residual history
-            fig, ax = plt.subplots()
-            for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
-                ax.semilogy(Problem.x, np.abs(Problem.residAll[i]), label=i)
-            ax.semilogy(Problem.x,
-                        np.abs(Problem.residAll[args.maxIterations - 1]),
-                        'k--', label='final')
-            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-            plt.xlabel('x')
-            plt.ylabel(r'$\|R\|$')
-            plt.title('Absolute Residual History: ' + title)
-            plt.grid()
+            if 'residual' in args.save:
+                # plot residual history
+                fig, ax = plt.subplots()
+                for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
+                    ax.semilogy(Problem.x, np.abs(Problem.resid_hist[i]), label=i)
+                ax.semilogy(Problem.x,
+                            np.abs(Problem.resid_hist[args.maxIterations - 1]),
+                            'k--', label='final')
+                ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+                plt.xlabel('x')
+                plt.ylabel(r'$\|R\|$')
+                plt.title('Absolute Residual History: ' + title)
+                plt.grid()
 
-            # plot F residual history
-            fig, ax = plt.subplots()
-            for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
-                ax.semilogy(Problem.x, np.abs(Problem.FAll[i]), label=i)
-            ax.semilogy(Problem.x,
-                        np.abs(Problem.FAll[args.maxIterations - 1]),
-                        'k--', label='final')
-            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-            plt.xlabel('x')
-            plt.ylabel(r'$\|F_i = G(n_i) - n_i\|$')
-            plt.title('Absolute F Residual History: ' + title)
-            plt.grid()
 
-            # plot absolute error history
-            fig, ax = plt.subplots()
-            for i in range(min_iter, max_iter + 1):
-                ax.semilogy(Problem.x, np.abs(Problem.errAll[i]), label=i)
-            ax.semilogy(Problem.x,
-                        np.abs(Problem.errAll[args.maxIterations]),
-                        'k--', label='final')
-            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-            plt.xlabel('x')
-            plt.ylabel(r'$\|n - n_{ss}\|$')
-            plt.title('Absolute Error History: ' + title)
-            plt.grid()
+            if 'F_residual' in args.save:
+                # plot F residual history
+                fig, ax = plt.subplots()
+                for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
+                    ax.semilogy(Problem.x, np.abs(Problem.F_hist[i]), label=i)
+                ax.semilogy(Problem.x,
+                            np.abs(Problem.F_hist[args.maxIterations - 1]),
+                            'k--', label='final')
+                ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+                plt.xlabel('x')
+                plt.ylabel(r'$\|F_i = G(n_i) - n_i\|$')
+                plt.title('Absolute F Residual History: ' + title)
+                plt.grid()
 
-        if (args.plotall or args.plotfluxdchistory):
+            if 'error' in args.save:
+                # plot absolute error history
+                fig, ax = plt.subplots()
+                for i in range(min_iter, max_iter + 1):
+                    ax.semilogy(Problem.x, np.abs(Problem.err_hist[i]), label=i)
+                ax.semilogy(Problem.x,
+                            np.abs(Problem.err_hist[args.maxIterations]),
+                            'k--', label='final')
+                ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+                plt.xlabel('x')
+                plt.ylabel(r'$\|n - n_{ss}\|$')
+                plt.title('Absolute Error History: ' + title)
+                plt.grid()
 
-            # plot flux history
-            fig, ax = plt.subplots()
-            for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
-                ax.semilogy(Problem.x, Problem.fluxAll[i], label=i)
-            ax.semilogy(Problem.x,
-                        Problem.fluxAll[args.maxIterations - 1],
-                        'k--', label='final')
-            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-            plt.xlabel('x')
-            plt.ylabel('flux')
-            plt.title('Flux History: ' + title)
-            plt.grid()
 
-            # plot D history
-            fig, ax = plt.subplots()
-            for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
-                ax.semilogy(Problem.x, Problem.DAll[i], label=i)
-            ax.semilogy(Problem.x,
-                        Problem.DAll[args.maxIterations - 1],
-                        'k--', label='final')
-            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-            plt.xlabel('x')
-            plt.ylabel('D')
-            plt.title('D History: ' + title)
-            plt.grid()
+            if 'flux' in args.save:
+                # plot flux history
+                fig, ax = plt.subplots()
+                for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
+                    ax.semilogy(Problem.x, Problem.flux_hist[i], label=i)
+                ax.semilogy(Problem.x,
+                            Problem.flux_hist[args.maxIterations - 1],
+                            'k--', label='final')
+                ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+                plt.xlabel('x')
+                plt.ylabel('flux')
+                plt.title('Flux History: ' + title)
+                plt.grid()
 
-            # plot D_EWMA history
-            fig, ax = plt.subplots()
-            for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
-                ax.semilogy(Problem.x, Problem.D_EWMAAll[i], label=i)
-            ax.semilogy(Problem.x,
-                        Problem.D_EWMAAll[args.maxIterations - 1],
-                        'k--', label='final')
-            ax.semilogy(Problem.x,
-                        Problem.DAll[args.maxIterations - 1],
-                        'r:', label='final (no relaxation)')
-            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-            plt.xlabel('x')
-            plt.ylabel('D')
-            plt.title('Relaxed D History: ' + title)
-            plt.grid()
+            if 'D' in args.save:
+                # plot D history
+                fig, ax = plt.subplots()
+                for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
+                    ax.semilogy(Problem.x, Problem.D_hist[i], label=i)
+                ax.semilogy(Problem.x,
+                            Problem.D_hist[args.maxIterations - 1],
+                            'k--', label='final')
+                ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+                plt.xlabel('x')
+                plt.ylabel('D')
+                plt.title('D History: ' + title)
+                plt.grid()
 
-            # plot c history
-            fig, ax = plt.subplots()
-            for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
-                ax.semilogy(Problem.x, Problem.cAll[i], label=i)
-            ax.semilogy(Problem.x, Problem.cAll[args.maxIterations - 1],
-                        'k--', label='final')
-            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-            plt.xlabel('x')
-            plt.ylabel('c')
-            plt.title('c History: ' + title)
-            plt.grid()
+            if 'D_EWMA' in args.save:
+                # plot D_EWMA history
+                fig, ax = plt.subplots()
+                for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
+                    ax.semilogy(Problem.x, Problem.D_EWMA_hist[i], label=i)
+                ax.semilogy(Problem.x,
+                            Problem.D_EWMA_hist[args.maxIterations - 1],
+                            'k--', label='final')
+                if 'D' in args.save:
+                    ax.semilogy(Problem.x,
+                                Problem.D_hist[args.maxIterations - 1],
+                                'r:', label='final (no relaxation)')
+                ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+                plt.xlabel('x')
+                plt.ylabel('D')
+                plt.title('Relaxed D History: ' + title)
+                plt.grid()
 
-            # plot c_EMWA history
-            fig, ax = plt.subplots()
-            for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
-                ax.semilogy(Problem.x, Problem.c_EWMAAll[i], label=i)
-            ax.semilogy(Problem.x, Problem.c_EWMAAll[args.maxIterations - 1],
-                        'k--', label='final')
-            ax.semilogy(Problem.x, Problem.cAll[args.maxIterations - 1],
-                        'r:', label='final (no relaxation)')
-            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-            plt.xlabel('x')
-            plt.ylabel('c')
-            plt.title('Relaxed c History: ' + title)
-            plt.grid()
+            if 'c' in args.save:
+                # plot c history
+                fig, ax = plt.subplots()
+                for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
+                    ax.semilogy(Problem.x, Problem.c_hist[i], label=i)
+                ax.semilogy(Problem.x, Problem.c_hist[args.maxIterations - 1],
+                            'k--', label='final')
+                ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+                plt.xlabel('x')
+                plt.ylabel('c')
+                plt.title('c History: ' + title)
+                plt.grid()
 
-        # display all plots
-        anyplots = (args.plotall or args.plotfinalsolution or
-                    args.plotconvergence or args.plotfinalreserr or
-                    args.plotsolutionhistory or args.plotreserrhistory or
-                    args.plotfluxdchistory)
+            if 'D_EWMA' in args.save:
+                # plot c_EMWA history
+                fig, ax = plt.subplots()
+                for i in range(min_iter, min(max_iter + 1, args.maxIterations)):
+                    ax.semilogy(Problem.x, Problem.c_EWMA_hist[i], label=i)
+                ax.semilogy(Problem.x, Problem.c_EWMA_hist[args.maxIterations - 1],
+                            'k--', label='final')
+                if 'c' in args.save:
+                    ax.semilogy(Problem.x, Problem.c_hist[args.maxIterations - 1],
+                                'r:', label='final (no relaxation)')
+                ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+                plt.xlabel('x')
+                plt.ylabel('c')
+                plt.title('Relaxed c History: ' + title)
+                plt.grid()
 
-        if anyplots:
-
-            # show plots
-            plt.show()
+        # show plots
+        plt.show()
 
 
 # ****** run main ****** #
