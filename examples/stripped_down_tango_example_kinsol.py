@@ -699,7 +699,7 @@ def main():
         title = title + ', m = ' + str(args.mAA)
         title = title + ', d = ' + str(args.delayAA)
         if args.addnoise:
-            prefix = title + 'with noise'
+            title = title + 'with noise'
 
     else:
         prefix = 'tango'
@@ -714,7 +714,7 @@ def main():
         title = title + ', a = ' + str(args.alpha)
         title = title + ', b = ' + str(args.beta)
         if args.addnoise:
-            prefix = title + 'with noise'
+            title = title + 'with noise'
 
     # full history
     if 'profile' in args.save:

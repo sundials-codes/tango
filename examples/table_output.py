@@ -178,6 +178,9 @@ def main():
     rvals = list()
     cvals = list()
 
+    if args.debug:
+        print(args.outfiles)
+
     # find values for rows and columns
     for outfile in args.outfiles:
 
@@ -303,17 +306,19 @@ def main():
         iters = range(0, nrows)
 
         # compute norm of data
-        nrm = np.zeros((nrows, 1))
-
-        if args.norm == 'L2':
-            for i in iters:
-                nrm[i] = np.sqrt(np.sum(data[i, :]**2))   # L2
-        elif args.norm == 'RMS':
-            for i in iters:
-                nrm[i] = np.sqrt(np.mean(data[i, :]**2))  # RMS
+        if data.ndim > 1:
+            nrm = np.zeros((nrows, 1))
+            if args.norm == 'L2':
+                for i in iters:
+                    nrm[i] = np.sqrt(np.sum(data[i, :]**2))   # L2
+            elif args.norm == 'RMS':
+                for i in iters:
+                    nrm[i] = np.sqrt(np.mean(data[i, :]**2))  # RMS
+            else:
+                for i in iters:
+                    nrm[i] = np.amax(np.abs(data[i, :]))      # Max
         else:
-            for i in iters:
-                nrm[i] = np.amax(np.abs(data[i, :]))      # Max
+            nrm = data
 
         # print out the first iteration below a given threshold
         # or the final iteratio if the threshold is not crossed
