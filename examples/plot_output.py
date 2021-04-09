@@ -72,10 +72,11 @@ def main():
         # get method name and parameters, set title
         if "kinsol" in fname[0]:
             method = "KINSOL"
-            alpha = fname[2]
-            beta = fname[4]
-            mAA = fname[6]
-            delayAA = fname[8]
+            power = fname[2]
+            alpha = fname[4]
+            beta = fname[6]
+            mAA = fname[8]
+            delayAA = fname[10]
 
             # create legend entry for this data
             if args.legend:
@@ -88,8 +89,9 @@ def main():
 
         elif "tango" in fname[0]:
             method = "Tango"
-            alpha = fname[2]
-            beta = fname[4]
+            power = fname[2]
+            alpha = fname[4]
+            beta = fname[6]
 
             # create legend entry for this data
             if args.legend:
@@ -114,17 +116,19 @@ def main():
         iters = range(0, nrows)
 
         # compute norm of data
-        nrm = np.zeros((nrows, 1))
-
-        if args.norm == 'L2':
-            for i in iters:
-                nrm[i] = np.sqrt(np.sum(data[i, :]**2))   # L2
-        elif args.norm == 'RMS':
-            for i in iters:
-                nrm[i] = np.sqrt(np.mean(data[i, :]**2))  # RMS
+        if data.ndim > 1:
+            nrm = np.zeros((nrows, 1))
+            if args.norm == 'L2':
+                for i in iters:
+                    nrm[i] = np.sqrt(np.sum(data[i, :]**2))   # L2
+            elif args.norm == 'RMS':
+                for i in iters:
+                    nrm[i] = np.sqrt(np.mean(data[i, :]**2))  # RMS
+            else:
+                for i in iters:
+                    nrm[i] = np.amax(np.abs(data[i, :]))      # Max
         else:
-            for i in iters:
-                nrm[i] = np.amax(np.abs(data[i, :]))      # Max
+            nrm = data
 
         nrm_pltidx = nrows + 1
         if args.cutoff:
