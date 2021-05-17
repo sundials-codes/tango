@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 stripped_down_tango_example.py
 
