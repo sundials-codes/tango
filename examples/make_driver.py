@@ -111,3 +111,5 @@ for f in forms:
             # make script executable
             st = os.stat(fname)
             os.chmod(fname, st.st_mode | stat.S_IEXEC)
+
+print("Done")
