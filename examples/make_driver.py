@@ -62,6 +62,9 @@ for f in forms:
 
             with open(fname, "w") as jobfile:
 
+                jobfile.write("#!/bin/bash\n\n")
+                jobfile.write("source env.sh \n\n")
+
                 for m in accel:
                     if m == 0:
                         # alpha damping
