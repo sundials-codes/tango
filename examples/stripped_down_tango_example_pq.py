@@ -306,6 +306,6 @@ prefix += '_p_' + str(args.p)
 prefix += '_alpha_' + str(args.alpha)
 prefix += '_beta_' + str(args.beta)
 
-filename = prefix + 'residual_error_history.txt'
+filename = prefix + '_residual_error_history.txt'
 
 np.savetxt(os.path.join(outdir, filename), residual_error_history)

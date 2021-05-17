@@ -441,6 +441,6 @@ prefix += '_m_' + str(args.aa_m)
 prefix += '_delay_' + str(args.aa_delay)
 
 
-filename = prefix + 'residual_error_history.txt'
+filename = prefix + '_residual_error_history.txt'
 
 np.savetxt(os.path.join(outdir, filename), residual_error_history)
