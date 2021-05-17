@@ -139,71 +139,79 @@ class Problem:
 
     def Gfun(sunvec_old, sunvec_new, user_data):
 
-        # extract old profile and flux
-        state_old = kin.N_VGetData(sunvec_old)
-        profile = state_old[:Problem.N]
-        flux = state_old[Problem.N:]
+        try:
+            # extract old profile and flux
+            state_old = kin.N_VGetData(sunvec_old)
+            profile = state_old[:Problem.N]
+            flux = state_old[Problem.N:]
 
-        # transform flux into effective transport coefficients.  H2=D, H3=-c
-        # [use flux split class from lodestro_method]
-        (D, c, _) = Problem.fluxSplitter.flux_to_transport_coeffs(flux,
-                                                                  profile,
-                                                                  Problem.dx)
+            # transform flux into effective transport coefficients.  H2=D, H3=-c
+            # [use flux split class from lodestro_method]
+            (D, c, _) = Problem.fluxSplitter.flux_to_transport_coeffs(flux,
+                                                                      profile,
+                                                                      Problem.dx)
 
-        H2Turb = D
-        H3 = -c
+            H2Turb = D
+            H3 = -c
 
-        # get H's for all the others (H1, H2, H7).  H's represent terms in the transport equation
-        H1 = np.ones_like(Problem.x)
-        H7 = source(Problem.x)
-        H2const = 0.00  # could represent some background level of (classical) diffusion
-        H2 = H2Turb + H2const
+            # get H's for all the others (H1, H2, H7).  H's represent terms in the transport equation
+            H1 = np.ones_like(Problem.x)
+            H7 = source(Problem.x)
+            H2const = 0.00  # could represent some background level of (classical) diffusion
+            H2 = H2Turb + H2const
 
-        ## new --- discretize, then compute the residual, then solve the matrix equation for the new profile
-        (A, B, C, f) = HToMatrixFD.H_to_matrix(Problem.dt,
-                                               Problem.dx,
-                                               Problem.nL,
-                                               Problem.n_IC,
-                                               H1, H2=H2, H3=H3, H7=H7)
+            ## new --- discretize, then compute the residual, then solve the matrix equation for the new profile
+            (A, B, C, f) = HToMatrixFD.H_to_matrix(Problem.dt,
+                                                   Problem.dx,
+                                                   Problem.nL,
+                                                   Problem.n_IC,
+                                                   H1, H2=H2, H3=H3, H7=H7)
 
-        # see fieldgroups.calculate_residual() for additional information on the residual calculation
-        resid = A*np.concatenate((profile[1:], np.zeros(1))) + B*profile + C*np.concatenate((np.zeros(1), profile[:-1])) - f
-        resid = resid / np.max(np.abs(f))  # normalize the residual
-        rmsResid = np.sqrt( np.mean( resid**2 ))  # take an rms characterization of residual
-        Problem.residual_history[Problem.iter_idx] = rmsResid
+            # see fieldgroups.calculate_residual() for additional information on the residual calculation
+            resid = A*np.concatenate((profile[1:], np.zeros(1))) + B*profile + C*np.concatenate((np.zeros(1), profile[:-1])) - f
+            resid = resid / np.max(np.abs(f))  # normalize the residual
+            rmsResid = np.sqrt( np.mean( resid**2 ))  # take an rms characterization of residual
+            Problem.residual_history[Problem.iter_idx] = rmsResid
 
-        # error
-        Problem.error_history[Problem.iter_idx] = np.max(np.abs(profile - Problem.profile_ss))
+            # error
+            Problem.error_history[Problem.iter_idx] = np.max(np.abs(profile - Problem.profile_ss))
 
-        # save data
-        if Problem.args.makeplots:
-            Problem.profile_history[Problem.iter_idx, :] = profile
-            Problem.flux_history[Problem.iter_idx, :] = flux
+            # save data
+            if Problem.args.makeplots:
+                Problem.profile_history[Problem.iter_idx, :] = profile
+                Problem.flux_history[Problem.iter_idx, :] = flux
 
-        # solve matrix equation for new profile
-        profile_new = HToMatrixFD.solve(A, B, C, f)
+            # solve matrix equation for new profile
+            profile_new = HToMatrixFD.solve(A, B, C, f)
 
-        # relax profile
-        profile_new = (1 - Problem.args.alpha) * profile + Problem.args.alpha * profile_new
+            # relax profile
+            profile_new = (1 - Problem.args.alpha) * profile + Problem.args.alpha * profile_new
 
-        # check
-        if np.any(profile_new < 0) == True:
-            Problem.neg_profile = False
-            print(f'error.  negative value detected in profile at l={iter_idx}')
+            # check
+            if np.any(profile_new < 0) == True:
+                Problem.neg_profile = False
+                print(f'error.  negative value detected in profile at iter = {Problem.iter_idx}')
+                raise ValueError
 
-        # compute new flux with relaxed flux
-        flux_new = Problem.fluxModel.get_flux(profile_new)
+            # compute new flux with relaxed flux
+            flux_new = Problem.fluxModel.get_flux(profile_new)
 
-        # relax flux
-        flux_new = (1 - Problem.args.beta) * flux + Problem.args.beta * flux_new
+            # relax flux
+            flux_new = (1 - Problem.args.beta) * flux + Problem.args.beta * flux_new
 
-        # extract old profile and flux
-        state_new = kin.N_VGetData(sunvec_new)
-        state_new[:Problem.N] = profile_new
-        state_new[Problem.N:] = flux_new
+            # extract old profile and flux
+            state_new = kin.N_VGetData(sunvec_new)
+            state_new[:Problem.N] = profile_new
+            state_new[Problem.N:] = flux_new
 
-        # update iteration count
-        Problem.iter_idx += 1
+            # update iteration count
+            Problem.iter_idx += 1
+
+        except:
+            print(f'error.  Gfun failed at iter = {Problem.iter_idx}')
+            return -1
+        else:
+            return 0
 
 
     def solveKINSOL(state):
