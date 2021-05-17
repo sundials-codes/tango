@@ -26,7 +26,7 @@ from tango import lodestro_method
 import kinsol as kin
 
 # slightly modified version of tango's noisyflux
-import noisyflux_mod as noisyflux
+from tango.extras import noisyflux_mod as noisyflux
 
 
 def steady_state_solution(x, nL, p=2, S0=1, delta=0.1, L=1):
