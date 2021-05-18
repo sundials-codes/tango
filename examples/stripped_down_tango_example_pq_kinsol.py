@@ -132,8 +132,6 @@ class Problem:
 
         Problem.fluxSplitter = lodestro_method.FluxSplit(thetaParams)
 
-        Problem.neg_profile = True
-
         Problem.iter_idx = 0
 
 
@@ -189,7 +187,6 @@ class Problem:
 
             # check
             if np.any(profile_new < 0) == True:
-                Problem.neg_profile = False
                 print(f'error.  negative value detected in profile at iter = {Problem.iter_idx}')
                 raise ValueError
 
@@ -367,10 +364,15 @@ iter_idx = Problem.iter_idx
 # compute the final residual and error
 
 # finish
+print("Profile damping (alpha): ", args.alpha)
+print("Flux damping (beta):     ", args.beta)
+if args.aa_m > 0:
+    print("Acceleration depth:      ", args.aa_m)
+    print("Acceleration delay:      ", args.aa_delay)
+print("Iterations:              ", iter_idx)
+print("Residual:                ", Problem.residual_history[iter_idx - 1])
+print("Error:                   ", Problem.error_history[iter_idx - 1])
 
-print("Iterations: ", iter_idx)
-print("Residual:   ", Problem.residual_history[iter_idx - 1])
-print("Error:      ", Problem.error_history[iter_idx - 1])
 
 # plot the last iteration of density --- presumably the correct solution, if converged
 #  Also plot the analytic steady state solution
