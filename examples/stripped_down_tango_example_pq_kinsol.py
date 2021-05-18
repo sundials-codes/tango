@@ -435,20 +435,22 @@ if args.makeplots:
 # save the residual and error history
 residual_error_history = np.vstack((Problem.residual_history, Problem.error_history))
 
-outdir = "output"
+outdir = "output_kinsol_pq"
+if args.noise:
+    outdir += '_noise'
+outdir += '_p_' + str(args.p)
 
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
 prefix = 'kinsol_pq'
 if args.noise:
-    prefix += '+noise'
+    prefix += '_noise'
 prefix += '_p_' + str(args.p)
 prefix += '_alpha_' + str(args.alpha)
 prefix += '_beta_' + str(args.beta)
 prefix += '_m_' + str(args.aa_m)
 prefix += '_delay_' + str(args.aa_delay)
-
 
 filename = prefix + '_residual_error_history.txt'
 
