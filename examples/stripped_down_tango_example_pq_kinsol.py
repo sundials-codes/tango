@@ -263,6 +263,16 @@ class Problem:
             if flag < 0:
                 raise RuntimeError(f'KINSetDelayAA returned {flag}')
 
+        # set fixed point and Anderson acceleration damping
+        if Problem.args.aa_damping < 1.0:
+            flag = kin.KINSetDampingFP(kmem, Problem.args.aa_damping)
+            if flag < 0:
+                raise RuntimeError(f'KINSetDampingFP returned {flag}')
+
+            flag = kin.KINSetDampingAA(kmem, Problem.args.aa_damping)
+            if flag < 0:
+                raise RuntimeError(f'KINSetDampingAA returned {flag}')
+
         # set error log file
         # flag = kin.KINSetErrFilename(kmem, "kinsol_error.log")
         # if flag < 0:
@@ -315,10 +325,10 @@ parser.add_argument('--noise_lac', type=float, default=0.2,
 parser.add_argument('--noise_amplitude', type=float, default=0.1,
                     help='Amplitude of noise')
 
-parser.add_argument('--alpha', type=float, default=0.1,
+parser.add_argument('--alpha', type=float, default=1.0,
                     help='Relaxation parameter for profile')
 
-parser.add_argument('--beta', type=float, default=0.1,
+parser.add_argument('--beta', type=float, default=1.0,
                     help='Relaxation parameter for flux')
 
 parser.add_argument('--max_iterations', type=int, default=200,
@@ -330,6 +340,9 @@ parser.add_argument('--aa_m', type=int, default=0,
 parser.add_argument('--aa_delay', type=int, default=0,
                     help='Anderson acceleration delay')
 
+parser.add_argument('--aa_damping', type=int, default=1.0,
+                    help='Anderson acceleration damping')
+
 parser.add_argument('--plot_off', dest='makeplots', action='store_false',
                     help='disable all plot options')
 
@@ -338,6 +351,18 @@ parser.add_argument('--plot_iters', type=int, nargs=2, default=[0, 200],
 
 # parse command line args
 args = parser.parse_args()
+
+# sanity checks
+if (args.alpha < 1.0 or args.beta < 1.0) and args.aa_damping < 1.0:
+    print("=========================================================")
+    print("WARNING: Mixing internal relaxation and Anderson damping!")
+    print("=========================================================")
+
+print("Profile damping (alpha): ", args.alpha)
+print("Flux damping (beta):     ", args.beta)
+print("Acceleration depth:      ", args.aa_m)
+print("Acceleration delay:      ", args.aa_delay)
+print("Anderson damping:        ", args.aa_damping)
 
 # setup the problem
 Problem.setup(args)
@@ -363,16 +388,20 @@ iter_idx = Problem.iter_idx
 
 # compute the final residual and error
 
-# finish
 print("Profile damping (alpha): ", args.alpha)
 print("Flux damping (beta):     ", args.beta)
-if args.aa_m > 0:
-    print("Acceleration depth:      ", args.aa_m)
-    print("Acceleration delay:      ", args.aa_delay)
+print("Anderson damping:        ", args.aa_damping)
+print("Acceleration depth:      ", args.aa_m)
+print("Acceleration delay:      ", args.aa_delay)
 print("Iterations:              ", iter_idx)
 print("Residual:                ", Problem.residual_history[iter_idx - 1])
 print("Error:                   ", Problem.error_history[iter_idx - 1])
 
+# sanity checks (again)
+if (args.alpha < 1.0 or args.beta < 1.0) and args.aa_damping < 1.0:
+    print("=========================================================")
+    print("WARNING: Mixing internal relaxation and Anderson damping!")
+    print("=========================================================")
 
 # plot the last iteration of density --- presumably the correct solution, if converged
 #  Also plot the analytic steady state solution
