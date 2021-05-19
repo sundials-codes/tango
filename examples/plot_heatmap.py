@@ -51,6 +51,9 @@ def main():
     # parse command line args
     args = parser.parse_args()
 
+    # remove duplicate files
+    args.outfiles = list(set(args.outfiles))
+
     rows = list()
     cols = list()
 
@@ -63,12 +66,19 @@ def main():
         # parse file name to get run settings
         fname = os.path.basename(outfile).split("_")
 
+        if args.debug:
+            for i, f in enumerate(fname):
+                print(i, f)
+
         gfun = fname[1]
-        power = int(fname[3])
-        alpha = float(fname[5])
-        beta = float(fname[7])
-        aa_m = int(fname[9])
-        aa_delay = int(fname[11])
+        noise = fname[2]
+        power = int(fname[4])
+        alpha = float(fname[6])
+        beta = float(fname[8])
+        gamma = float(fname[10])
+        aa_m = int(fname[12])
+        aa_delay = int(fname[14])
+        aa_damp = float(fname[16])
 
         # update row labels
         rows.append(aa_m)
@@ -77,13 +87,29 @@ def main():
         if alpha < 1.0 and beta < 1.0:
             if alpha != beta:
                 print(f"ERROR: alpha = {alpha} != beta = {beta}")
+                sys.exit()
+
+        if ((alpha < 1.0 or beta < 1.0 or gamma < 1.0) and
+            aa_damp < 1.0):
+            print(f"ERROR: Mixed internal and Anderson damping not supported!")
+            sys.exit()
+
+        if ((alpha < 1.0 or beta < 1.0 or aa_damp < 1.0) and
+            gamma < 1.0):
+            print(f"ERROR: Mixed D/c and state/flux damping not supported!")
+            sys.exit()
 
         if alpha < 1.0:
             cols.append(alpha)
         elif beta < 1.0:
             cols.append(beta)
+        elif gamma < 1.0:
+            cols.append(gamma)
+        elif aa_damp < 1.0:
+            cols.append(aa_damp)
         else:
-            print(f"ERROR: alpha >= 1.0 and beta >= 1.0")
+            print(f"ERROR: No damping!")
+            sys.exit()
 
     # remove duplicates
     rows = list(set(rows))
@@ -117,16 +143,26 @@ def main():
         fname = os.path.basename(outfile).split("_")
 
         gfun = fname[1]
-        power = int(fname[3])
-        alpha = float(fname[5])
-        beta = float(fname[7])
-        aa_m = int(fname[9])
-        aa_delay = int(fname[11])
+        noise = fname[2]
+        power = int(fname[4])
+        alpha = float(fname[6])
+        beta = float(fname[8])
+        gamma = float(fname[10])
+        aa_m = int(fname[12])
+        aa_delay = int(fname[14])
+        aa_damp = float(fname[16])
 
         if alpha < 1.0:
             col_idx = alpha
         elif beta < 1.0:
             col_idx = beta
+        elif gamma < 1.0:
+            col_idx = gamma
+        elif aa_damp < 1.0:
+            col_idx = aa_damp
+        else:
+            print(f"ERROR: No damping!")
+            sys.exit()
 
         data_in = np.loadtxt(outfile)
 
