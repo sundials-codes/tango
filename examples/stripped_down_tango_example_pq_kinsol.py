@@ -645,22 +645,22 @@ if args.makeplots:
 # save the residual and error history
 residual_error_history = np.vstack((Problem.residual_history, Problem.error_history))
 
-outdir = "output_kinsol_gfun" + args.gfun
+outdir = "output_kinsol_gfun-" + args.gfun
 if args.noise:
-    outdir += '_addnoise'
+    outdir += '_add-noise'
 else:
-    outdir += '_nonoise'
+    outdir += '_no-noise'
 outdir += '_p_' + str(args.p)
 outdir += '_N_' + str(args.N)
 
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-prefix = 'kinsol_gfun' + args.gfun
+prefix = 'kinsol_gfun-' + args.gfun
 if args.noise:
-    prefix += '_addnoise'
+    prefix += '_add-noise'
 else:
-    prefix += '_nonoise'
+    prefix += '_no-noise'
 prefix += '_p_' + str(args.p)
 prefix += '_alpha_' + str(args.alpha)
 prefix += '_beta_' + str(args.beta)
