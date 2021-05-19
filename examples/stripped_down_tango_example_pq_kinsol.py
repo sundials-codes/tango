@@ -647,6 +647,8 @@ if not os.path.exists(outdir):
 prefix = 'kinsol_gfun' + args.gfun
 if args.noise:
     prefix += '_noise'
+else:
+    prefix += '_nonoise'
 prefix += '_p_' + str(args.p)
 prefix += '_alpha_' + str(args.alpha)
 prefix += '_beta_' + str(args.beta)
