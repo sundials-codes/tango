@@ -465,12 +465,6 @@ class Problem:
             print('KINSol finished')
 
 
-
-
-
-
-
-
 # **************************************** #
 
 
@@ -480,7 +474,7 @@ parser = argparse.ArgumentParser(description='Run Shestakov example')
 parser.add_argument('--N', type=int, default=500,
                     help='Number of spatial mesh points')
 
-parser.add_argument('--gfun', default='p', choices=['pq', 'p', 'd'],
+parser.add_argument('--gfun', default='p', choices=['p', 'pq', 'd'],
                     help='Fixed-point function formulation')
 
 parser.add_argument('--p', type=int, default=2,
@@ -524,6 +518,22 @@ parser.add_argument('--plot_iters', type=int, nargs=2, default=[0, 200],
 
 # parse command line args
 args = parser.parse_args()
+
+# sanity check
+if args.gfun != 'd' and args.gamma < 1.0:
+    print(f"ERROR: gfun = {args.gfun} with gamma = {args.gamma}")
+    sys.exit()
+
+if args.gfun == 'd' and (args.alpha < 1.0 or args.beta < 1.0):
+    print(f"ERROR: gfun = {args.gfun} with alpha = {args.alpha} and "
+          f"beta = {args.beta}")
+    sys.exit()
+
+if ((args.alpha < 1.0 or args.beta < 1.0 or args.gamma < 1.0) and
+    args.aa_damping < 1.0):
+    print("=========================================================")
+    print("WARNING: Mixing internal relaxation and Anderson damping!")
+    print("=========================================================")
 
 # setup the problem
 Problem.setup(args)
@@ -637,7 +647,9 @@ residual_error_history = np.vstack((Problem.residual_history, Problem.error_hist
 
 outdir = "output_kinsol_gfun" + args.gfun
 if args.noise:
-    outdir += '_noise'
+    outdir += '_addnoise'
+else:
+    outdir += '_nonoise'
 outdir += '_p_' + str(args.p)
 outdir += '_N_' + str(args.N)
 
@@ -646,7 +658,7 @@ if not os.path.exists(outdir):
 
 prefix = 'kinsol_gfun' + args.gfun
 if args.noise:
-    prefix += '_noise'
+    prefix += '_addnoise'
 else:
     prefix += '_nonoise'
 prefix += '_p_' + str(args.p)
