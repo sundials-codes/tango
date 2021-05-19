@@ -22,7 +22,6 @@ def main():
                         help='residual to print threshold for each method')
 
     parser.add_argument('--title', type=str,
-                        default="Anderson Acceleration Convergence Heatmap",
                         help='Heatmap title')
 
     parser.add_argument('--rowlabel', type=str, default="m",
@@ -35,6 +34,9 @@ def main():
                         help='''Either an relative value of 'xx-small',
                         'x-small', 'small', 'medium', 'large', 'x-large',
                         'xx-large' or an absolute font size, e.g., 12''')
+
+    parser.add_argument('--color_per_column', action='store_true',
+                        help="Color each column independently")
 
     parser.add_argument('--save', action='store_true',
                         help='Save figure to file')
@@ -196,24 +198,27 @@ def main():
     # create figure and axes
     fig, ax = plt.subplots()
 
-    miniter = np.nanmin(data_out)
-    bounds = miniter * np.linspace(1.0, 2.0, num=20)
-
     cmap = mpl.cm.coolwarm
-    norm = mpl.colors.BoundaryNorm(bounds, cmap.N, extend='max')
 
-    ims = plot_heatmap(rows, cols, data_out, ax=ax,
-                       cmap=cmap, norm=norm)
+    if args.color_per_column:
+        # color each column independently
+        ims = plot_heatmap(rows, cols, data_out, ax=ax,
+                           cmap=cmap)
+    else:
+        # normalize colors across all columns
+        miniter = np.nanmin(data_out)
+        bounds = miniter * np.linspace(1.0, 2.0, num=20)
+        norm = mpl.colors.BoundaryNorm(bounds, cmap.N, extend='max')
+
+        ims = plot_heatmap(rows, cols, data_out, ax=ax,
+                           cmap=cmap, norm=norm)
 
     for im in ims:
         annotate_heatmap(im, valfmt="{x:.0f}", fontsize=args.fontsize)
 
-    plt.title(args.title)
     ax.set_ylabel(args.rowlabel)
-    ax.set_xlabel(args.collabel)
+    ax.set_xlabel(args.collabel + "\n")
     ax.xaxis.set_label_position('top')
-
-    fig.tight_layout()
 
     if alpha < 1.0 and beta < 1.0:
         damping_type = 'alpha-beta'
@@ -228,11 +233,25 @@ def main():
     else:
         damping_type = 'None'
 
+    if args.title:
+        title = args.title
+    else:
+        title = (f"Anderson Acceleration Convergence to {args.rthresh:.1e}\n"
+                 f"p = {power}, delay = {aa_delay}")
+        if noise == 'add-noise':
+            title += " with Noisy Flux"
+        title += "\n"
+
+    plt.title(title)
+
+    fig.tight_layout()
+
     if args.figname:
         figname = args.figname
     else:
         figname = (f"residual_heatmap_{gfun}_{noise}_p_{power}"
-                   f"_{damping_type}_delay_{aa_delay}.pdf")
+                   f"_{damping_type}_delay_{aa_delay}"
+                   f"_thresh_{args.rthresh:.1e}.pdf")
 
     if args.save:
         plt.savefig(figname, bbox_inches='tight')
