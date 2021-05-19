@@ -37,12 +37,10 @@ def main():
                         'xx-large' or an absolute font size, e.g., 12''')
 
     parser.add_argument('--save', action='store_true',
-                        help='save figure to file')
+                        help='Save figure to file')
 
-    # plot options
-    parser.add_argument('--norm', type=str, default='RMS',
-                        choices=['L2', 'RMS', 'Max'],
-                        help='norm to use in plots')
+    parser.add_argument('--figname', type=str,
+                        help='Figure file name')
 
     # debugging options
     parser.add_argument('--debug', action='store_true',
@@ -217,8 +215,27 @@ def main():
 
     fig.tight_layout()
 
+    if alpha < 1.0 and beta < 1.0:
+        damping_type = 'alpha-beta'
+    elif alpha < 1.0:
+        damping_type = 'alpha'
+    elif beta < 1.0:
+        damping_type = 'beta'
+    elif gamma < 1.0:
+        damping_type = 'gamma'
+    elif aa_damp < 1.0:
+        damping_type = 'aa-damping'
+    else:
+        damping_type = 'None'
+
+    if args.figname:
+        figname = args.figname
+    else:
+        figname = (f"residual_heatmap_{gfun}_{noise}_p_{power}"
+                   f"_{damping_type}_delay_{aa_delay}.pdf")
+
     if args.save:
-        plt.savefig("fig.pdf", bbox_inches='tight')
+        plt.savefig(figname, bbox_inches='tight')
     else:
         plt.show()
 
