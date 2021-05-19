@@ -120,7 +120,8 @@ def write_command(jobfile, form, noise, power, alpha, beta, aa_m, aa_delay,
               f"aa_delay = {aa_delay:d}, aa_damping = {aa_damping:f}")
 
     if form == "p":
-        cmd = f"echo \"{setup}\"\n"
+        cmd = "echo \"====================\"\n"
+        cmd += f"echo \"{setup}\"\n"
         cmd += f"./stripped_down_tango_example_pq_kinsol.py \\\n"
         if noise:
             cmd += "    --noise \\\n"
@@ -132,6 +133,7 @@ def write_command(jobfile, form, noise, power, alpha, beta, aa_m, aa_delay,
                 f"    --aa_delay {aa_delay:d} \\\n"
                 f"    --aa_damping {aa_damping:f} \\\n"
                 f"    --plot_off\n\n")
+        cmd += "echo \"====================\"\n"
 
     jobfile.write(cmd)
 
