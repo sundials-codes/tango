@@ -38,6 +38,18 @@ def main():
     parser.add_argument('--color_per_column', action='store_true',
                         help="Color each column independently")
 
+    parser.add_argument('--normalize_idx', type=int, nargs=2,
+                        help="Index of data value to normalize around")
+
+    parser.add_argument('--nrm_min', type=float,
+                        help="Min value in colormap")
+
+    parser.add_argument('--nrm_center', type=float,
+                        help="Center value in colormap")
+
+    parser.add_argument('--nrm_max', type=float,
+                        help="Max value in colormap")
+
     parser.add_argument('--save', action='store_true',
                         help='Save figure to file')
 
@@ -195,6 +207,32 @@ def main():
             print(f"{data_out[i][j]:8.0f}", end='')
         print()
 
+    # normalization values
+    minval = np.nanmin(data_out)
+    maxval = np.nanmax(data_out)
+
+    if args.normalize_idx:
+        i = args.normalize_idx[0]
+        j = args.normalize_idx[1]
+        nrmval = data_out[i][j]
+        factor = minval / nrmval
+    else:
+        factor = 1
+
+    if factor < 1.0:
+        nrm_min = nrmval * factor
+        nrm_max = nrmval * (2 - factor)
+    else:
+        nrm_min = minval
+        nrm_max = maxval
+
+    if args.nrm_max:
+        nrm_max = args.nrm_max
+
+    if args.nrm_min:
+        nrm_min = args.nrm_min
+
+
     # create figure and axes
     fig, ax = plt.subplots()
 
@@ -205,10 +243,14 @@ def main():
         ims = plot_heatmap(rows, cols, data_out, ax=ax,
                            cmap=cmap)
     else:
-        # normalize colors across all columns
-        miniter = np.nanmin(data_out)
-        bounds = miniter * np.linspace(1.0, 2.0, num=20)
-        norm = mpl.colors.BoundaryNorm(bounds, cmap.N, extend='max')
+        if args.normalize_idx:
+            # normalize nrm_min -> 0, nrmval -> 0.5, nrm_max -> 1.0
+            norm = mpl.colors.TwoSlopeNorm(vmin=nrm_min, vcenter=nrmval,
+                                           vmax=nrm_max)
+        else:
+            # colormap based on discrete intervals
+            intervals = minval * np.linspace(1.0, 2.0, num=20)
+            norm = mpl.colors.BoundaryNorm(intervals, cmap.N, extend='max')
 
         ims = plot_heatmap(rows, cols, data_out, ax=ax,
                            cmap=cmap, norm=norm)
@@ -237,7 +279,7 @@ def main():
         title = args.title
     else:
         title = (f"Anderson Acceleration Convergence to {args.rthresh:.1e}\n"
-                 f"p = {power}, delay = {aa_delay}")
+                 f"power = {power}, delay = {aa_delay}")
         if noise == 'add-noise':
             title += " with Noisy Flux"
         title += "\n"
@@ -339,10 +381,10 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
         data = im.get_array()
 
     # Normalize the threshold to the images color range.
-    if threshold is not None:
-        threshold = im.norm(threshold)
-    else:
-        threshold = im.norm(data.max())/2.
+    # if threshold is not None:
+    #     threshold = im.norm(threshold)
+    # else:
+    #     threshold = im.norm(data.max())/2.
 
     # Set default alignment to center, but allow it to be
     # overwritten by textkw.
@@ -363,7 +405,13 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
             if not isinstance(data[i,j], float):
                 continue
 
-            kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold)])
+            nrm = im.norm(data[i, j])
+            if nrm > .75 or nrm < 0.25:
+                textcolor = 1 # white text
+            else:
+                textcolor = 0 # black text
+
+            kw.update(color=textcolors[textcolor])
             text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
             texts.append(text)
 
