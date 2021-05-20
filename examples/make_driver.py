@@ -17,6 +17,7 @@ def main():
     powers = [10]     # flux power
     #tests = ['alpha', 'beta', 'alpha-beta', 'aa-damp']
     tests = ['alpha-beta']
+    ic = 'linear'
 
     # solver options
     maxiters = 500
@@ -64,7 +65,7 @@ def main():
                             if "alpha" in tests:
                                 for a in damping:
                                     c += write_command(fn,
-                                                       f, n, p,
+                                                       f, n, p, ic,
                                                        a, 1.0,
                                                        maxiters,
                                                        m, 0, 1.0,
@@ -73,7 +74,7 @@ def main():
                             if "beta" in tests:
                                 for b in damping:
                                     c += write_command(fn,
-                                                       f, n, p,
+                                                       f, n, p, ic,
                                                        1.0, b,
                                                        maxiters,
                                                        m, 0, 1.0,
@@ -82,7 +83,7 @@ def main():
                             if "alpha-beta" in tests:
                                 for ab in damping:
                                     c += write_command(fn,
-                                                       f, n, p,
+                                                       f, n, p, ic,
                                                        ab, ab,
                                                        maxiters,
                                                        m, 0, 1.0,
@@ -91,7 +92,7 @@ def main():
                             if "aa-damp" in tests:
                                 for ad in damping:
                                     c += write_command(fn,
-                                                       f, n, p,
+                                                       f, n, p, ic,
                                                        1.0, 1.0,
                                                        maxiters,
                                                        m, 0, ad,
@@ -102,7 +103,7 @@ def main():
                                 if "alpha" in tests:
                                     for a in damping:
                                         c += write_command(fn,
-                                                           f, n, p,
+                                                           f, n, p, ic,
                                                            a, 1.0,
                                                            maxiters,
                                                            m, d, 1.0,
@@ -111,7 +112,7 @@ def main():
                                 if "beta" in tests:
                                     for b in damping:
                                         c += write_command(fn,
-                                                           f, n, p,
+                                                           f, n, p, ic,
                                                            1.0, b,
                                                            maxiters,
                                                            m, d, 1.0,
@@ -120,7 +121,7 @@ def main():
                                 if "alpha-beta" in tests:
                                     for ab in damping:
                                         c += write_command(fn,
-                                                           f, n, p,
+                                                           f, n, p, ic,
                                                            ab, ab,
                                                            maxiters,
                                                            m, d, 1.0,
@@ -129,7 +130,7 @@ def main():
                                 if "aa-damp" in tests:
                                     for ad in damping:
                                         c += write_command(fn,
-                                                           f, n, p,
+                                                           f, n, p, ic,
                                                            1.0, 1.0,
                                                            maxiters,
                                                            m, d, ad,
@@ -142,7 +143,7 @@ def main():
     print("Done")
 
 
-def write_command(jobfile, form, noise, power, alpha, beta, maxiters,
+def write_command(jobfile, form, noise, power, ic, alpha, beta, maxiters,
                   aa_m, aa_delay, aa_damping, test_num, total_tests):
 
     # adjust damping for higher powers of p
@@ -155,9 +156,15 @@ def write_command(jobfile, form, noise, power, alpha, beta, maxiters,
             aa_damping = aa_damping / power
 
     setup = (f"Test {test_num} of {total_tests}: ")
-    setup += (f"Form = {form}, Noise = {noise}, Power = {power:d}, "
-              f"Alpha = {alpha:f}, Beta = {beta:f}, maxiters = {maxiters:d}, "
-              f"m = {aa_m:d}, aa_delay = {aa_delay:d}, "
+    setup += (f"Form = {form}, "
+              f"Noise = {noise}, "
+              f"Power = {power:d}, "
+              f"IC = {ic}, "
+              f"Alpha = {alpha:f}, "
+              f"Beta = {beta:f}, "
+              f"maxiters = {maxiters:d}, "
+              f"m = {aa_m:d}, "
+              f"aa_delay = {aa_delay:d}, "
               f"aa_damping = {aa_damping:f}")
 
     if form == "p":
@@ -166,7 +173,8 @@ def write_command(jobfile, form, noise, power, alpha, beta, maxiters,
         cmd += f"./stripped_down_tango_example_pq_kinsol.py \\\n"
         if noise:
             cmd += "    --noise \\\n"
-        cmd += (f"    --p {power} \\\n"
+        cmd += (f"    --p {power:d} \\\n"
+                f"    --initial_condition {ic} \\\n"
                 f"    --alpha {alpha:f} \\\n"
                 f"    --beta {beta:f} \\\n"
                 f"    --max_iterations {maxiters:d} \\\n"
