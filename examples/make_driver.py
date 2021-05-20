@@ -12,20 +12,24 @@ def main():
     # ---------------
 
     # problem setup options
-    forms = ["p"]   # relax state or diffusion
-    noise = [False]  # use noisy flux
+    forms = ["p"]     # relax state or diffusion
+    noise = [False]   # use noisy flux
     powers = [10]     # flux power
+    #tests = ['alpha', 'beta', 'alpha-beta', 'aa-damp']
+    tests = ['alpha-beta']
 
     # solver options
+    maxiters = 500
     damping = np.linspace(0.1, 0.9, 9)  # damping values
     accel = range(0,5)                  # acceleration space depth
     delay = [0, 5]                      # delay length
 
     # number of tests to create
     if 0 in accel:
-        tests_per_setup = 4 * len(damping) * ((len(accel) - 1) * len(delay) + 1)
+        tests_per_setup = len(tests) * len(damping) * ((len(accel) - 1) *
+                                                       len(delay) + 1)
     else:
-        tests_per_setup = 4 * len(damping) * len(accel) * len(delay)
+        tests_per_setup = len(tests) * len(damping) * len(accel) * len(delay)
 
     total_tests = len(forms) * len(noise) * len(powers) * tests_per_setup
 
@@ -57,43 +61,79 @@ def main():
                     for m in accel:
                         if m == 0:
                             # alpha damping
-                            for a in damping:
-                                c += write_command(fn, f, n, p, a, 1.0, m, 0,
-                                                   1.0, c, tests_per_setup)
+                            if "alpha" in tests:
+                                for a in damping:
+                                    c += write_command(fn,
+                                                       f, n, p,
+                                                       a, 1.0,
+                                                       maxiters,
+                                                       m, 0, 1.0,
+                                                       c, tests_per_setup)
                             # beta damping
-                            for b in damping:
-                                c += write_command(fn, f, n, p, 1.0, b, m, 0,
-                                                   1.0, c, tests_per_setup)
+                            if "beta" in tests:
+                                for b in damping:
+                                    c += write_command(fn,
+                                                       f, n, p,
+                                                       1.0, b,
+                                                       maxiters,
+                                                       m, 0, 1.0,
+                                                       c, tests_per_setup)
                             # alpha & beta damping
-                            for ab in damping:
-                                c += write_command(fn, f, n, p, ab, ab, m, 0,
-                                                   1.0, c, tests_per_setup)
+                            if "alpha-beta" in tests:
+                                for ab in damping:
+                                    c += write_command(fn,
+                                                       f, n, p,
+                                                       ab, ab,
+                                                       maxiters,
+                                                       m, 0, 1.0,
+                                                       c, tests_per_setup)
                             # Anderson damping
-                            for ad in damping:
-                                c += write_command(fn, f, n, p, 1.0, 1.0, m, 0,
-                                                   ad, c, tests_per_setup)
+                            if "aa-damp" in tests:
+                                for ad in damping:
+                                    c += write_command(fn,
+                                                       f, n, p,
+                                                       1.0, 1.0,
+                                                       maxiters,
+                                                       m, 0, ad,
+                                                       c, tests_per_setup)
                         else:
                             for d in delay:
                                 # alpha damping
-                                for a in damping:
-                                    c += write_command(fn, f, n, p, a, 1.0, m,
-                                                       d, 1.0, c,
-                                                       tests_per_setup)
+                                if "alpha" in tests:
+                                    for a in damping:
+                                        c += write_command(fn,
+                                                           f, n, p,
+                                                           a, 1.0,
+                                                           maxiters,
+                                                           m, d, 1.0,
+                                                           c, tests_per_setup)
                                 # beta damping
-                                for b in damping:
-                                    c += write_command(fn, f, n, p, 1.0, b, m,
-                                                       d, 1.0, c,
-                                                       tests_per_setup)
+                                if "beta" in tests:
+                                    for b in damping:
+                                        c += write_command(fn,
+                                                           f, n, p,
+                                                           1.0, b,
+                                                           maxiters,
+                                                           m, d, 1.0,
+                                                           c, tests_per_setup)
                                 # alpha & beta damping
-                                for ab in damping:
-                                    c += write_command(fn, f, n, p, ab, ab, m,
-                                                       d, 1.0, c,
-                                                       tests_per_setup)
+                                if "alpha-beta" in tests:
+                                    for ab in damping:
+                                        c += write_command(fn,
+                                                           f, n, p,
+                                                           ab, ab,
+                                                           maxiters,
+                                                           m, d, 1.0,
+                                                           c, tests_per_setup)
                                 # Anderson damping
-                                for ad in damping:
-                                    c += write_command(fn, f, n, p, 1.0, 1.0,
-                                                       m, d, ad, c,
-                                                       tests_per_setup)
+                                if "aa-damp" in tests:
+                                    for ad in damping:
+                                        c += write_command(fn,
+                                                           f, n, p,
+                                                           1.0, 1.0,
+                                                           maxiters,
+                                                           m, d, ad,
+                                                           c, tests_per_setup)
 
                     # make script executable
                     st = os.stat(fname)
@@ -102,8 +142,8 @@ def main():
     print("Done")
 
 
-def write_command(jobfile, form, noise, power, alpha, beta, aa_m, aa_delay,
-                  aa_damping, test_num, total_tests):
+def write_command(jobfile, form, noise, power, alpha, beta, maxiters,
+                  aa_m, aa_delay, aa_damping, test_num, total_tests):
 
     # adjust damping for higher powers of p
     if power > 2:
@@ -116,8 +156,9 @@ def write_command(jobfile, form, noise, power, alpha, beta, aa_m, aa_delay,
 
     setup = (f"Test {test_num} of {total_tests}: ")
     setup += (f"Form = {form}, Noise = {noise}, Power = {power:d}, "
-              f"Alpha = {alpha:f}, Beta = {beta:f}, m = {aa_m:d}, "
-              f"aa_delay = {aa_delay:d}, aa_damping = {aa_damping:f}")
+              f"Alpha = {alpha:f}, Beta = {beta:f}, maxiters = {maxiters:d}, "
+              f"m = {aa_m:d}, aa_delay = {aa_delay:d}, "
+              f"aa_damping = {aa_damping:f}")
 
     if form == "p":
         cmd = "echo \"====================\"\n"
@@ -128,7 +169,7 @@ def write_command(jobfile, form, noise, power, alpha, beta, aa_m, aa_delay,
         cmd += (f"    --p {power} \\\n"
                 f"    --alpha {alpha:f} \\\n"
                 f"    --beta {beta:f} \\\n"
-                f"    --max_iterations 200 \\\n"
+                f"    --max_iterations {maxiters:d} \\\n"
                 f"    --aa_m {aa_m:d} \\\n"
                 f"    --aa_delay {aa_delay:d} \\\n"
                 f"    --aa_damping {aa_damping:f} \\\n"
