@@ -20,6 +20,12 @@ def main():
     parser.add_argument('--row', type=int, default=0,
                         help='Which row to plots')
 
+    parser.add_argument('--xlimits', type=float, nargs=2,
+                        help='x-axis limits')
+
+    parser.add_argument('--ylimits', type=float, nargs=2,
+                        help='y-axis limits')
+
     parser.add_argument('--title', type=str,
                         help='Plot title')
 
@@ -39,6 +45,9 @@ def main():
 
     parser.add_argument('--legendtitle', type=str,
                         help='Legend Title')
+
+    parser.add_argument('--legendoutside', action='store_true',
+                        help='Place legend outside the plot')
 
     parser.add_argument('--save', action='store_true',
                         help='Save figure to file')
@@ -118,18 +127,28 @@ def main():
         # plot method convergence
         ax.semilogy(iters, data[args.row,:num_iters], nonpositive='clip', label=label)
 
+    if args.xlimits:
+        ax.set_xlim(args.xlimits[0], args.xlimits[1])
+
+    if args.ylimits:
+        ax.set_ylim(args.ylimits[0], args.ylimits[1])
+
     ax.set_ylabel(args.ylabel)
     ax.set_xlabel(args.xlabel)
 
     if args.legendtitle:
-        legend_title = args.legendtitle
+        if args.legendtitle == 'None':
+            legend_title = None
+        else:
+            legend_title = args.legendtitle
     else:
         legend_title = "Damping"
 
-    # place legend outside figure
-    ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0),
-              title=legend_title)
-    #ax.legend(loc='best', title="Damping")
+    if args.legendoutside:
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0),
+                  title=legend_title)
+    else:
+        ax.legend(loc='best', title=legend_title)
 
     if args.title:
         title = args.title
