@@ -15,15 +15,15 @@ def main():
     forms = ["p"]     # relax state or diffusion
     noise = [False]   # use noisy flux
     powers = [10]     # flux power
-    #tests = ['alpha', 'beta', 'alpha-beta', 'aa-damp']
-    tests = ['alpha-beta']
+    tests = ['alpha', 'beta', 'alpha-beta', 'aa-damp']
+    #tests = ['alpha-beta']
     ic = 'linear'
 
     # solver options
     maxiters = 500
     damping = np.linspace(0.1, 0.9, 9)  # damping values
     accel = range(0,5)                  # acceleration space depth
-    delay = [0, 5]                      # delay length
+    delay = [30]                        # delay length
 
     # number of tests to create
     if 0 in accel:
