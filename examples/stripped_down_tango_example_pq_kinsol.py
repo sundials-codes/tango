@@ -665,6 +665,7 @@ else:
     outdir += '_no-noise'
 outdir += '_p_' + str(args.p)
 outdir += '_N_' + str(args.N)
+outdir += '_IC_' + args.initial_condition
 
 if not os.path.exists(outdir):
     os.makedirs(outdir)
