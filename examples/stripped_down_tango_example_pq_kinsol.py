@@ -89,9 +89,6 @@ class Problem:
         # location corresponding to grid points j=0, ..., N-1
         Problem.x = np.arange(Problem.N) * Problem.dx
 
-        # initial condition
-        Problem.n_IC = 0.02 - 0.01 * Problem.x
-
         # boundary condition at x = L
         Problem.nL = 1e-2
 
@@ -103,6 +100,18 @@ class Problem:
 
         Problem.profile_ss = steady_state_solution(Problem.x, Problem.nL, p=args.p)
         Problem.flux_ss = Problem.fluxModel.get_flux(Problem.profile_ss)
+
+        # initial condition
+        if args.initial_condition == 'linear':
+            # line between true solution at left and right boundary
+            m = (Problem.profile_ss[-1] - Problem.profile_ss[0]) / L
+            Problem.n_IC = m * Problem.x + Problem.profile_ss[0]
+        elif args.initial_condition == 'orig':
+            # original initial condition
+            Problem.n_IC = 0.02 - 0.01 * Problem.x
+        else:
+            print("ERROR: Unknown initial condition!")
+            sys.exit()
 
         # add noise to flux
         if args.noise:
@@ -476,6 +485,10 @@ parser.add_argument('--N', type=int, default=500,
 
 parser.add_argument('--gfun', default='p', choices=['p', 'pq', 'd'],
                     help='Fixed-point function formulation')
+
+parser.add_argument('--initial_condition', type=str, default='orig',
+                    choices=['orig','linear'],
+                    help='Initial condition')
 
 parser.add_argument('--p', type=int, default=2,
                     help='Power for analytic flux')
