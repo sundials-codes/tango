@@ -526,7 +526,7 @@ parser.add_argument('--aa_damping', type=float, default=1.0,
 parser.add_argument('--plot_off', dest='makeplots', action='store_false',
                     help='disable all plot options')
 
-parser.add_argument('--plot_iters', type=int, nargs=2, default=[0, 200],
+parser.add_argument('--plot_iters', type=int, nargs=2, default=[0, 10],
                     help='Iteration range to plot (inclusive)')
 
 # parse command line args
