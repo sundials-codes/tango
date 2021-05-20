@@ -499,7 +499,7 @@ parser.add_argument('--noise', action='store_true',
 parser.add_argument('--noise_lac', type=float, default=0.2,
                     help='Correlation length of noise')
 
-parser.add_argument('--noise_amplitude', type=float, default=0.1,
+parser.add_argument('--noise_amplitude', type=float, default=1.0e-4,
                     help='Amplitude of noise')
 
 parser.add_argument('--alpha', type=float, default=1.0,
