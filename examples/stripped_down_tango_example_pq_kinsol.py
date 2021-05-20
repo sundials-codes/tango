@@ -666,6 +666,7 @@ else:
 outdir += '_p_' + str(args.p)
 outdir += '_N_' + str(args.N)
 outdir += '_IC_' + args.initial_condition
+outdir += '_maxit_' + str(args.max_iterations)
 
 if not os.path.exists(outdir):
     os.makedirs(outdir)
