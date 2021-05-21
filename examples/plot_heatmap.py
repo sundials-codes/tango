@@ -24,10 +24,10 @@ def main():
     parser.add_argument('--title', type=str,
                         help='Heatmap title')
 
-    parser.add_argument('--rowlabel', type=str, default="m",
+    parser.add_argument('--rowlabel', type=str, default="Depth (m)",
                         help='Heatmap row label')
 
-    parser.add_argument('--collabel', type=str, default="Damping",
+    parser.add_argument('--collabel', type=str, default=r'Damping ($\alpha$)',
                         help='Heatmap column label')
 
     parser.add_argument('--fontsize', type=str, default=12,
