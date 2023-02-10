@@ -40,6 +40,9 @@ def main():
                         default='RMS Norm',
                         help='Plot y-axis label')
 
+    parser.add_argument('--linestyle', type=str, nargs='+',
+                        help='Line styles')
+
     parser.add_argument('--legend', type=str, nargs='+',
                         help='Legend entries')
 
@@ -124,8 +127,15 @@ def main():
             else:
                 label = None
 
+        if args.linestyle:
+            linestyle = args.linestyle[i]
+        else:
+            linestyle='-'
+
         # plot method convergence
-        ax.semilogy(iters, data[args.row,:num_iters], nonpositive='clip', label=label)
+        ax.semilogy(iters, data[args.row,:num_iters],
+                    nonpositive='clip', label=label,
+                    linestyle=linestyle)
 
     if args.xlimits:
         ax.set_xlim(args.xlimits[0], args.xlimits[1])
