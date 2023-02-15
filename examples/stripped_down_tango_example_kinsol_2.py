@@ -399,7 +399,7 @@ class Problem:
             raise RuntimeError(f'KINSetInfoFilename returned {flag}')
 
         # set info print level
-        flag = kin.KINSetPrintLevel(kmem, 2)
+        flag = kin.KINSetPrintLevel(kmem, 0)
         if flag < 0:
             raise RuntimeError(f'KINSetPrintLevel returned {flag}')
 
