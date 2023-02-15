@@ -463,9 +463,9 @@ class Problem:
 
         # set fixed point and Anderson acceleration damping
         if beta < 1.0:
-            flag = kin.KINSetDampingFP(kmem, beta)
+            flag = kin.KINSetDamping(kmem, beta)
             if flag < 0:
-                raise RuntimeError(f'KINSetDampingFP returned {flag}')
+                raise RuntimeError(f'KINSetDamping returned {flag}')
 
             flag = kin.KINSetDampingAA(kmem, beta)
             if flag < 0:

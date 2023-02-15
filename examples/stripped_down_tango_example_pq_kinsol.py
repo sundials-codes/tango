@@ -437,9 +437,9 @@ class Problem:
 
         # set fixed point and Anderson acceleration damping
         if Problem.args.aa_damping < 1.0:
-            flag = kin.KINSetDampingFP(kmem, Problem.args.aa_damping)
+            flag = kin.KINSetDamping(kmem, Problem.args.aa_damping)
             if flag < 0:
-                raise RuntimeError(f'KINSetDampingFP returned {flag}')
+                raise RuntimeError(f'KINSetDamping returned {flag}')
 
             flag = kin.KINSetDampingAA(kmem, Problem.args.aa_damping)
             if flag < 0:
