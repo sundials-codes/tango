@@ -79,8 +79,9 @@ def main():
             power = fname[2]
             alpha = fname[4]
             beta = fname[6]
-            mAA = fname[8]
-            delayAA = fname[10]
+            adapt = fname[8]
+            mAA = fname[10]
+            delayAA = fname[12]
 
             # create legend entry for this data
             if args.legend:
@@ -89,7 +90,7 @@ def main():
                 legend = make_legend_label(args.legendinfo, method, alpha,
                                            beta, mAA, delayAA)
             else:
-                legend = None
+                legend = f'''m {mAA}, delay {delayAA}, beta {beta}, adapt {adapt}'''
 
         elif "tango" in fname[0]:
             method = "Tango"

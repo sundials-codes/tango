@@ -307,8 +307,8 @@ class Problem:
 
         return 0
 
-    def solveKINSOL(profile_old, maxIterations, tol=1.0e-11, beta=1.0, m=0,
-                    delay=0):
+    def solveKINSOL(profile_old, maxIterations, tol=1.0e-11, beta=1.0,
+                    beta_adapt=False, m=0, delay=0):
 
         # solution and scaling arrays
         profile_new = np.copy(profile_old)
@@ -370,6 +370,11 @@ class Problem:
             flag = kin.KINSetDampingAA(kmem, beta)
             if flag < 0:
                 raise RuntimeError(f'KINSetDampingAA returned {flag}')
+
+        if beta_adapt:
+            flag = kin.KINSetAdaptiveDampingAA(kmem, 1)
+            if flag < 0:
+                raise RuntimeError(f'KINSetAdaptiveDampingAA returned {flag}')
 
         # set error log file
         flag = kin.KINSetErrFilename(kmem, "kinsol_error.log")
@@ -474,7 +479,9 @@ def main():
                         help='Relaxation parameter for diffusion')
     parser.add_argument('--beta', type=float, default=1.0,
                         help='Relaxation parameter for profile')
-    parser.add_argument('--maxIterations', type=int, default=2000,
+    parser.add_argument('--beta_adapt', action='store_true',
+                        help='Adapt relaxation parameter for profile (KINSOL)')
+    parser.add_argument('--maxIterations', type=int, default=150,
                         help='maximum number iterations')
 
     # other options
@@ -514,8 +521,11 @@ def main():
     nInitial = np.copy(Problem.n_mminus1)
 
     if args.kinsol:
-        nFinal = Problem.solveKINSOL(nInitial, args.maxIterations,
-                                     beta=args.beta, m=args.mAA,
+        nFinal = Problem.solveKINSOL(nInitial,
+                                     args.maxIterations,
+                                     beta=args.beta,
+                                     beta_adapt=args.beta_adapt,
+                                     m=args.mAA,
                                      delay=args.delayAA)
     else:
         nFinal = Problem.solve(nInitial, args.maxIterations, args.beta,
@@ -545,6 +555,7 @@ def main():
         prefix = prefix + '_p_' + str(args.p)
         prefix = prefix + '_alpha_' + str(args.alpha)
         prefix = prefix + '_beta_' + str(args.beta)
+        prefix = prefix + '_adapt-beta_' + str(args.beta_adapt)
         prefix = prefix + '_m_' + str(args.mAA)
         prefix = prefix + '_delay_' + str(args.delayAA)
         if args.addnoise:
