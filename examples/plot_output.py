@@ -45,7 +45,7 @@ def main():
     parser.add_argument('--refidx', type=int, default=0,
                         help='''which output file (number) to base refine line
                         on''')
-    parser.add_argument('--noref', dest='plotref', action='store_false',
+    parser.add_argument('--ref', dest='plotref', action='store_true',
                         help='disable convergence rate reference line')
     parser.add_argument('--ithresh', type=float, default=1.0e-14,
                         help='''threshold for stopping convergence reference
@@ -208,11 +208,10 @@ def main():
         plt.title(args.title)
     else:
         plt.title('Residual History')
-    if args.legendinfo or args.legend or args.plotref:
-        if (args.legendoutside):
-            ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        else:
-            ax.legend(loc='best')
+    if (args.legendoutside):
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
+    else:
+        ax.legend(loc='best')
     plt.grid()
 
     if args.save:
