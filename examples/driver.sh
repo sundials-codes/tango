@@ -45,14 +45,20 @@ python stripped_down_tango_example_kinsol_2.py \
        --beta 0.4 --kinsol --mAA 3 --delayAA 5
 
 python stripped_down_tango_example_kinsol_2.py \
-       --beta 0.1 --beta_adapt --kinsol --mAA 3 --delayAA 5
+       --beta 0.4 --beta_adapt --kinsol --mAA 3 --delayAA 5
+
+python stripped_down_tango_example_kinsol_2.py \
+       --beta 0.4 --beta_adapt --kinsol --mAA 3 --delayAA 5 --beta_adapt_factor 1.0
+
+python stripped_down_tango_example_kinsol_2.py \
+       --beta 0.4 --beta_adapt --kinsol --mAA 3 --delayAA 5 --beta_adapt_factor 0.25
 
 ./plot_output.py \
     output/*m_0*Fresid_RMS_history.txt \
-    output/*adapt-beta_False_m_3*Fresid_RMS_history.txt \
-    output/*adapt-beta_True_m_3*Fresid_RMS_history.txt
+    output/*adapt-beta_False*m_3*Fresid_RMS_history.txt \
+    output/*adapt-beta_True*m_3*Fresid_RMS_history.txt
 
 ./plot_output.py \
     output/*m_0*Rresid_RMS_history.txt \
-    output/*adapt-beta_False_m_3*Rresid_RMS_history.txt \
-    output/*adapt-beta_True_m_3*Rresid_RMS_history.txt
+    output/*adapt-beta_False*m_3*Rresid_RMS_history.txt \
+    output/*adapt-beta_True*m_3*Rresid_RMS_history.txt

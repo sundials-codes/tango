@@ -320,7 +320,7 @@ class Problem:
         return 0
 
     def solveKINSOL(profile_old, maxIterations, tol=1.0e-11, beta=1.0,
-                    beta_adapt=False, m=0, delay=0):
+                    beta_adapt=False, beta_adapt_factor=0.5, m=0, delay=0):
 
         # solution and scaling arrays
         profile_new = np.copy(profile_old)
@@ -387,6 +387,11 @@ class Problem:
             flag = kin.KINSetAdaptiveDampingAA(kmem, 1)
             if flag < 0:
                 raise RuntimeError(f'KINSetAdaptiveDampingAA returned {flag}')
+
+        if beta_adapt_factor != 0.5:
+            flag = kin.KINSetAdaptiveDampingFactorAA(kmem, beta_adapt_factor)
+            if flag < 0:
+                raise RuntimeError(f'KINSetAdaptiveDampingFactorAA returned {flag}')
 
         # set error log file
         flag = kin.KINSetErrFilename(kmem, "kinsol_error.log")
@@ -492,7 +497,9 @@ def main():
     parser.add_argument('--beta', type=float, default=1.0,
                         help='Relaxation parameter for profile')
     parser.add_argument('--beta_adapt', action='store_true',
-                        help='Adapt relaxation parameter for profile (KINSOL)')
+                        help='Adapt relaxation (KINSOL)')
+    parser.add_argument('--beta_adapt_factor', type=float, default=0.5,
+                        help='Adapt relaxation factor (KINSOL)')
     parser.add_argument('--maxIterations', type=int, default=150,
                         help='maximum number iterations')
 
@@ -537,6 +544,7 @@ def main():
                                      args.maxIterations,
                                      beta=args.beta,
                                      beta_adapt=args.beta_adapt,
+                                     beta_adapt_factor=args.beta_adapt_factor,
                                      m=args.mAA,
                                      delay=args.delayAA)
     else:
@@ -568,6 +576,7 @@ def main():
         prefix = prefix + '_alpha_' + str(args.alpha)
         prefix = prefix + '_beta_' + str(args.beta)
         prefix = prefix + '_adapt-beta_' + str(args.beta_adapt)
+        prefix = prefix + '_adapt-beta-factor_' + str(args.beta_adapt_factor)
         prefix = prefix + '_m_' + str(args.mAA)
         prefix = prefix + '_delay_' + str(args.delayAA)
         if args.addnoise:
