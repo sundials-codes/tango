@@ -202,6 +202,7 @@ class Problem:
 
         # always save residual history
         Problem.F_hist = np.zeros((args.maxIterations, N))
+        Problem.R_hist = np.zeros((args.maxIterations, N))
 
     def Gfun(profile_old):
 
@@ -241,11 +242,22 @@ class Problem:
                                                Problem.nL, Problem.n_mminus1,
                                                H1, H2=H2, H3=H3, H7=H7)
 
+        # see fieldgroups.calculate_residual() for additional information on
+        # the residual calculation
+        resid = (A * np.concatenate((profile_old[1:], np.zeros(1))) +
+                 B * profile_old +
+                 C * np.concatenate((np.zeros(1), profile_old[:-1]))
+                 - f)
+
+        # compute normalized residual
+        resid = resid / np.max(np.abs(f))
+
         # solve matrix equation for new profile n_{i+1} = G(n_i)
         profile_new = HToMatrixFD.solve(A, B, C, f)
 
         # compute F_i = G(n_i) - n_i (same as in KINSOL)
         Problem.F_hist[Problem.numGEvals, :] = profile_new - profile_old
+        Problem.R_hist[Problem.numGEvals, :] = resid
 
         # update number of G evals
         Problem.numGEvals += 1
@@ -570,15 +582,21 @@ def main():
 
     # save residual norm history
     resF_nrm = np.zeros((Problem.numIters, 1))
+    resR_nrm = np.zeros((Problem.numIters, 1))
     for i in iters:
         if args.norm == 'L2':
             resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
+            resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
         elif args.norm == 'RMS':
             resF_nrm[i] = np.sqrt(np.mean(Problem.F_hist[i, :]**2))
+            resR_nrm[i] = np.sqrt(np.mean(Problem.R_hist[i, :]**2))
         else:
             resF_nrm[i] = np.amax(np.abs(Problem.F_hist[i, :]))
+            resR_nrm[i] = np.amax(np.abs(Problem.R_hist[i, :]))
     np.savetxt(outdir + '/' + prefix + '_Fresid_' + args.norm + '_history.txt',
                resF_nrm)
+    np.savetxt(outdir + '/' + prefix + '_Rresid_' + args.norm + '_history.txt',
+               resR_nrm)
 
 # ****** run main ****** #
 if __name__ == '__main__':
