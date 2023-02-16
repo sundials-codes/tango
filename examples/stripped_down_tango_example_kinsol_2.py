@@ -173,32 +173,33 @@ class Problem:
 
         # print problem setup to screen
         print("Tango Shestakov Example:")
-        print("  Use KINSOL             =", args.kinsol)
-        print("  Domain size L          =", L)
-        print("  Mesh points N          =", N)
-        print("  Mesh spacing dx        =", Problem.dx)
-        print("  Right boundary value   =", Problem.nL)
-        print("  Time step size         =", Problem.dt)
-        print("  1st order edge         =", args.firstOrderEdge)
-        print("  D minimum              =", args.Dmin)
-        print("  D maximum              =", args.Dmax)
-        print("  dp/dx threshold        =", args.dpdxThreshold)
-        print("  Flux power             =", p)
-        print("  Relaxation alpha       =", Problem.alpha)
-        print("  Relaxation beta        =", args.beta)
-        print("  Max iterations         =", args.maxIterations)
-        print("  Acceleration depth     =", args.mAA)
-        print("  Acceleration delay     =", args.delayAA)
-        print("  Initial condition      =", args.IC)
+        print("  Use KINSOL               =", args.kinsol)
+        print("  Domain size L            =", L)
+        print("  Mesh points N            =", N)
+        print("  Mesh spacing dx          =", Problem.dx)
+        print("  Right boundary value     =", Problem.nL)
+        print("  Time step size           =", Problem.dt)
+        print("  1st order edge           =", args.firstOrderEdge)
+        print("  D minimum                =", args.Dmin)
+        print("  D maximum                =", args.Dmax)
+        print("  dp/dx threshold          =", args.dpdxThreshold)
+        print("  Flux power               =", p)
+        print("  Relaxation alpha         =", Problem.alpha)
+        print("  Relaxation beta          =", args.beta)
+        print("  Max iterations           =", args.maxIterations)
+        print("  Acceleration depth       =", args.mAA)
+        print("  Acceleration delay       =", args.delayAA)
+        print("  Adapt Acceleration depth =", args.adaptmAA)
+        print("  Initial condition        =", args.IC)
         if args.IC == 'pow':
-            print("  IC power               =", args.IC_q)
-            print("  IC value left boundary =", args.IC_n0)
+            print("  IC power                 =", args.IC_q)
+            print("  IC value left boundary   =", args.IC_n0)
         elif args.IC == 'const':
-            print("  IC const               =", args.IC_const)
+            print("  IC const                 =", args.IC_const)
         elif args.IC == 'rand':
-            print("  IC stddev              =", args.IC_stddev)
+            print("  IC stddev                =", args.IC_stddev)
         elif args.IC == 'solp':
-            print("  IC dev                 =", args.IC_dev)
+            print("  IC dev                   =", args.IC_dev)
 
         # always save residual history
         Problem.F_hist = np.zeros((args.maxIterations, N))
@@ -320,7 +321,8 @@ class Problem:
         return 0
 
     def solveKINSOL(profile_old, maxIterations, tol=1.0e-11, beta=1.0,
-                    beta_adapt=False, beta_adapt_factor=0.5, m=0, delay=0):
+                    beta_adapt=False, beta_adapt_factor=0.5, m=0, delay=0,
+                    adapt_m=False):
 
         # solution and scaling arrays
         profile_new = np.copy(profile_old)
@@ -338,6 +340,11 @@ class Problem:
             flag = kin.KINSetMAA(kmem, m)
             if flag < 0:
                 raise RuntimeError(f'KINSetMAA returned {flag}')
+
+            if adapt_m:
+                flag = kin.KINSetAdaptiveMAA(kmem, 1)
+                if flag < 0:
+                    raise RuntimeError(f'KINSetAdaptiveMAA returned {flag}')
 
         # wrap the python system function so that it is callable from C
         sysfn = kin.WrapPythonSysFn(Problem.GfunKINSOL)
@@ -516,6 +523,8 @@ def main():
                         help='Anderson acceleration depth')
     parser.add_argument('--delayAA', type=int, default=0,
                         help='number of iterations to delay Anderson start')
+    parser.add_argument('--adaptmAA', action='store_true',
+                        help='adapt the acceleration depth')
 
     # norm option (only for plots right now since iteration always runs to max)
     parser.add_argument('--norm', type=str, default='RMS',
@@ -546,7 +555,8 @@ def main():
                                      beta_adapt=args.beta_adapt,
                                      beta_adapt_factor=args.beta_adapt_factor,
                                      m=args.mAA,
-                                     delay=args.delayAA)
+                                     delay=args.delayAA,
+                                     adapt_m=args.adaptmAA)
     else:
         nFinal = Problem.solve(nInitial, args.maxIterations, args.beta,
                                ignore=args.ignore, clip=args.clip)
@@ -579,6 +589,7 @@ def main():
         prefix = prefix + '_adapt-beta-factor_' + str(args.beta_adapt_factor)
         prefix = prefix + '_m_' + str(args.mAA)
         prefix = prefix + '_delay_' + str(args.delayAA)
+        prefix = prefix + '_adapt-m_' + str(args.adaptmAA)
         if args.addnoise:
             prefix = prefix + '_noise'
     else:
