@@ -24,7 +24,7 @@ def main():
                         lines''')
     parser.add_argument('--cutoff', type=float, default=None,
                         help='threshold for stopping convergence lines')
-    parser.add_argument('--norm', type=str, default='RMS',
+    parser.add_argument('--norm', type=str, default='L2',
                         choices=['L2', 'RMS', 'Max'],
                         help='norm to use in plots')
     parser.add_argument('--title', type=str, default=None,
@@ -74,44 +74,23 @@ def main():
         fname = os.path.basename(outfile).split("_")
 
         # get method name and parameters, set title
-        if "kinsol" in fname[0]:
-            method = "KINSOL"
-            power = fname[2]
-            alpha = fname[4]
-            beta = fname[6]
-            adapt = fname[8]
-            adapt_factor = fname[10]
-            mAA = fname[12]
-            delayAA = fname[14]
-            adapt_m = fname[16]
+        method = "KINSOL"
+        power = fname[1]
+        beta = fname[3]
+        adapt = fname[5]
+        adapt_factor = fname[7]
+        mAA = fname[9]
+        delayAA = fname[11]
+        adapt_m = fname[13]
 
-            # create legend entry for this data
-            if args.legend:
-                legend = args.legend[fcount]
-            elif args.legendinfo:
-                legend = make_legend_label(args.legendinfo, method, alpha,
+        # create legend entry for this data
+        if args.legend:
+            legend = args.legend[fcount]
+        elif args.legendinfo:
+            legend = make_legend_label(args.legendinfo, method, alpha,
                                            beta, mAA, delayAA)
-            else:
-                legend = f'''m {mAA}, delay {delayAA}, beta {beta}, adapt beta {adapt}, factor {adapt_factor}, adapt m {adapt_m}'''
-
-        elif "tango" in fname[0]:
-            method = "Tango"
-            power = fname[2]
-            alpha = fname[4]
-            beta = fname[6]
-
-            # create legend entry for this data
-            if args.legend:
-                legend = args.legend[fcount]
-            elif args.legendinfo:
-                legend = make_legend_label(args.legendinfo, method, alpha,
-                                           beta)
-            else:
-                legend = None
-
         else:
-            print('ERROR: Unknown method')
-            sys.exit()
+            legend = f'''m {mAA}, delay {delayAA}, beta {beta}, adapt beta {adapt}, factor {adapt_factor}, adapt m {adapt_m}'''
 
         # load data
         data = np.loadtxt(outfile)
@@ -149,7 +128,7 @@ def main():
 
         # plot method convergence
         ax.semilogy(iters[:nrm_pltidx], nrm[:nrm_pltidx], nonpositive='clip',
-                    label=legend)
+                    label=legend, marker='.')
 
         # print out the first iteration below a given threshold
         # or the final iteratio if the threshold is not crossed
@@ -201,11 +180,11 @@ def main():
     # create plot
     plt.xlabel('Iteration')
     if args.norm == 'L2':
-        plt.ylabel('$||F_i = G(n_i) - n_i||_{L2}$')
+        plt.ylabel('$||F(p)||_{2}$')
     elif args.norm == 'RMS':
-        plt.ylabel('$||F_i = G(n_i) - n_i||_{RMS}$')
+        plt.ylabel('$||F(p)||_{RMS}$')
     else:
-        plt.ylabel('$||F_i = G(n_i) - n_i||_{max}$')
+        plt.ylabel('$||F(p)||_{max}$')
     if args.title:
         plt.title(args.title)
     else:

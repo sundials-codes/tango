@@ -108,9 +108,6 @@ class Problem:
         # Time step size (1e4 is effectively infinite)
         Problem.dt = args.dt
 
-        # Relaxation parameter on the effective diffusion coefficient
-        Problem.alpha = args.alpha
-
         # Counters
         Problem.numGEvals = 0  # number of G evaluations
         Problem.numIters = 0   # number of fixed point iterations
@@ -173,7 +170,6 @@ class Problem:
 
         # print problem setup to screen
         print("Tango Shestakov Example:")
-        print("  Use KINSOL               =", args.kinsol)
         print("  Domain size L            =", L)
         print("  Mesh points N            =", N)
         print("  Mesh spacing dx          =", Problem.dx)
@@ -184,7 +180,6 @@ class Problem:
         print("  D maximum                =", args.Dmax)
         print("  dp/dx threshold          =", args.dpdxThreshold)
         print("  Flux power               =", p)
-        print("  Relaxation alpha         =", Problem.alpha)
         print("  Relaxation beta          =", args.beta)
         print("  Max iterations           =", args.maxIterations)
         print("  Acceleration depth       =", args.mAA)
@@ -216,27 +211,14 @@ class Problem:
                                                                   profile_old,
                                                                   Problem.dx)
 
-        # compute relaxation of D, c
-        # (EWMA = Exponentially Weighted Moving Average)
-        if Problem.numGEvals == 0:
-            Problem.D_EWMA = D
-            Problem.c_EWMA = c
-        else:
-            Problem.D_EWMA = (Problem.alpha * D +
-                              (1 - Problem.alpha) * Problem.D_EWMA)
-            Problem.c_EWMA = (Problem.alpha * c +
-                              (1 - Problem.alpha) * Problem.c_EWMA)
-
-        H2Turb = Problem.D_EWMA
-        H3 = -Problem.c_EWMA
-
-        # get H's for all the others (H1, H2, H7).
         # H's represent terms in the transport equation
         # H2const could represent a background level of (classical) diffusion
         H1 = np.ones_like(Problem.x)
         H7 = source(Problem.x)
+        H2Turb = D
         H2const = 0.00
         H2 = H2Turb + H2const
+        H3 = -c
 
         # construct equation for the new profile
         (A, B, C, f) = HToMatrixFD.H_to_matrix(Problem.dt, Problem.dx,
@@ -262,48 +244,6 @@ class Problem:
 
         # update number of G evals
         Problem.numGEvals += 1
-
-        return profile_new
-
-    def solve(profile_old, maxIterations, beta, ignore=False, clip=False):
-
-        # create array for new profile
-        profile_new = np.zeros_like(profile_old)
-
-        # perform fixed point iteration
-        for iterationNumber in np.arange(0, maxIterations):
-
-            # evaluate n_{i+1} = G(n_i)
-            profile_new[:] = Problem.Gfun(profile_old)
-
-            # relax profile
-            profile_new[:] = beta * profile_new + (1.0 - beta) * profile_old
-
-            # update iteration count
-            Problem.numIters += 1
-
-            # check
-            if np.any(profile_new < 0):
-                if ignore:
-                    print((f'Warning: ignoring negative values in profile at '
-                           f'l={Problem.numIters}'))
-                elif clip:
-                    print((f'Warning: clipping negative values in profile at '
-                           f'l={Problem.numIters}'))
-                    clip_val = 1.0e-10
-                    profile_new = np.where(profile_new < 0, clip_val,
-                                           profile_new)
-                else:
-                    print((f'Error: negative value detected in profile at '
-                           f'l={Problem.numIters}'))
-                    where = np.argwhere(profile_new < 0)
-                    for w in where:
-                        print("profile[" + str(w[0]) + "]" + " = "
-                              + str(profile_new[w[0]]))
-                    break
-
-            # make new profile old
-            profile_old = np.copy(profile_new)
 
         return profile_new
 
@@ -499,8 +439,6 @@ def main():
                         help='amplitude of noise')
 
     # relaxation and iteration options
-    parser.add_argument('--alpha', type=float, default=1.0,
-                        help='Relaxation parameter for diffusion')
     parser.add_argument('--beta', type=float, default=1.0,
                         help='Relaxation parameter for profile')
     parser.add_argument('--beta_adapt', action='store_true',
@@ -517,19 +455,12 @@ def main():
                         help='clip negative values in the solution')
 
     # KINSOL options
-    parser.add_argument('--kinsol', action='store_true',
-                        help='solve with KINSOL')
     parser.add_argument('--mAA', type=int, default=0,
                         help='Anderson acceleration depth')
     parser.add_argument('--delayAA', type=int, default=0,
                         help='number of iterations to delay Anderson start')
     parser.add_argument('--adaptmAA', action='store_true',
                         help='adapt the acceleration depth')
-
-    # norm option (only for plots right now since iteration always runs to max)
-    parser.add_argument('--norm', type=str, default='RMS',
-                        choices=['L2', 'RMS', 'Max'],
-                        help='norm to use in plots')
 
     # output options
     parser.add_argument('--outputdir', type=str, default='output',
@@ -548,18 +479,14 @@ def main():
     # solve the problem
     nInitial = np.copy(Problem.n_mminus1)
 
-    if args.kinsol:
-        nFinal = Problem.solveKINSOL(nInitial,
-                                     args.maxIterations,
-                                     beta=args.beta,
-                                     beta_adapt=args.beta_adapt,
-                                     beta_adapt_factor=args.beta_adapt_factor,
-                                     m=args.mAA,
-                                     delay=args.delayAA,
-                                     adapt_m=args.adaptmAA)
-    else:
-        nFinal = Problem.solve(nInitial, args.maxIterations, args.beta,
-                               ignore=args.ignore, clip=args.clip)
+    nFinal = Problem.solveKINSOL(nInitial,
+                                 args.maxIterations,
+                                 beta=args.beta,
+                                 beta_adapt=args.beta_adapt,
+                                 beta_adapt_factor=args.beta_adapt_factor,
+                                 m=args.mAA,
+                                 delay=args.delayAA,
+                                 adapt_m=args.adaptmAA)
 
     # print final resiudal and error
     print("Finished:")
@@ -580,43 +507,24 @@ def main():
         os.makedirs(outdir)
 
     # add a prefix for different configurations
-    if args.kinsol:
-        prefix = 'kinsol'
-        prefix = prefix + '_p_' + str(args.p)
-        prefix = prefix + '_alpha_' + str(args.alpha)
-        prefix = prefix + '_beta_' + str(args.beta)
-        prefix = prefix + '_adapt-beta_' + str(args.beta_adapt)
-        prefix = prefix + '_adapt-beta-factor_' + str(args.beta_adapt_factor)
-        prefix = prefix + '_m_' + str(args.mAA)
-        prefix = prefix + '_delay_' + str(args.delayAA)
-        prefix = prefix + '_adapt-m_' + str(args.adaptmAA)
-        if args.addnoise:
-            prefix = prefix + '_noise'
-    else:
-        prefix = 'tango'
-        prefix = prefix + '_p_' + str(args.p)
-        prefix = prefix + '_alpha_' + str(args.alpha)
-        prefix = prefix + '_beta_' + str(args.beta)
-        if args.addnoise:
-            prefix = prefix + '_noise'
+    prefix = 'p_' + str(args.p)
+    prefix = prefix + '_beta_' + str(args.beta)
+    prefix = prefix + '_adapt-beta_' + str(args.beta_adapt)
+    prefix = prefix + '_adapt-beta-factor_' + str(args.beta_adapt_factor)
+    prefix = prefix + '_m_' + str(args.mAA)
+    prefix = prefix + '_delay_' + str(args.delayAA)
+    prefix = prefix + '_adapt-m_' + str(args.adaptmAA)
+    if args.addnoise:
+        prefix = prefix + '_noise'
 
     # save residual norm history
     resF_nrm = np.zeros((Problem.numIters, 1))
     resR_nrm = np.zeros((Problem.numIters, 1))
     for i in iters:
-        if args.norm == 'L2':
-            resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
-            resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
-        elif args.norm == 'RMS':
-            resF_nrm[i] = np.sqrt(np.mean(Problem.F_hist[i, :]**2))
-            resR_nrm[i] = np.sqrt(np.mean(Problem.R_hist[i, :]**2))
-        else:
-            resF_nrm[i] = np.amax(np.abs(Problem.F_hist[i, :]))
-            resR_nrm[i] = np.amax(np.abs(Problem.R_hist[i, :]))
-    np.savetxt(outdir + '/' + prefix + '_Fresid_' + args.norm + '_history.txt',
-               resF_nrm)
-    np.savetxt(outdir + '/' + prefix + '_Rresid_' + args.norm + '_history.txt',
-               resR_nrm)
+        resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
+        resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
+    np.savetxt(outdir + '/' + prefix + '_Fresid.txt', resF_nrm)
+    np.savetxt(outdir + '/' + prefix + '_Rresid.txt', resR_nrm)
 
 # ****** run main ****** #
 if __name__ == '__main__':
