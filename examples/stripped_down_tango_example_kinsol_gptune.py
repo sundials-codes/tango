@@ -107,7 +107,7 @@ def parse_args():
     parser.add_argument('--beta_adapt_factor', type=float, default=0.5,
                         help='Adapt relaxation factor (KINSOL)')
 
-    parser.add_argument('--maxIters', type=int, default=200,
+    parser.add_argument('--maxIters', type=int, default=500,
                         help='maximum number iterations')
 
     parser.add_argument('--mAA', type=int, default=0,
@@ -529,7 +529,7 @@ def runGPTune(args):
     if "beta" in parameters:
         constraints["cst1"] = "beta > 0.0 and beta < 1.0"
 
-    constants = vars(args)
+    constants = dict(vars(args))
     matches = list()
     del constants['p']
     for key in parameters:
@@ -555,7 +555,7 @@ def runGPTune(args):
     gptune = GPTune(problem, computer=computer, data=data, options=options,
                     driverabspath=os.path.abspath(__file__))
 
-    giventask = [[2]]
+    giventask = [[args.p]]
     (data, models, stats) = gptune.SLA(20, 10, Tgiven=giventask)
 
     print("stats: ", stats)

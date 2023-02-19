@@ -24,16 +24,19 @@ rm -rf output/
 rm -rf gptune.db/
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4
+       --beta 0.06 --p 10 --IC lin
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4 --mAA 3
+       --beta 0.125355 --p 10 --IC lin
+
+python stripped_down_tango_example_kinsol_gptune.py \
+       --beta 0.06 --mAA 3 --p 10 --IC lin
 
 # python stripped_down_tango_example_kinsol_gptune.py \
 #        --beta_adapt --mAA 3
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4 --mAA 5 --adaptmAA
+       --beta 0.06 --mAA 5 --adaptmAA --p 10 --IC lin
 
 # python stripped_down_tango_example_kinsol_gptune.py \
 #        --beta 0.4 --beta_adapt --mAA 5 --adaptmAA
