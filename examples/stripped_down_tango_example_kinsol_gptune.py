@@ -504,13 +504,10 @@ class Problem:
 def objectives(point):
 
     print(point)
-
-    # call solver and return the total number of iterations
     iters = Problem.solveKINSOL(**point)
-
     return [iters]
 
-def runGPTune():
+def runGPTune(args):
 
     import os
     global nodes
@@ -520,12 +517,34 @@ def runGPTune():
     print ("machine: " + machine + " processor: " + processor + " num_nodes: " + str(nodes) + " num_cores: " + str(cores))
 
     input_space = Space([Integer(2, 50, name="p")])
-    parameter_space = Space([Real(0.0, 1.0, name="beta")])
     output_space = Space([Real(0, float('Inf'), name="iters", optimize=True)])
-    constraints = {"cst1": "beta > 0.0 and beta < 1.0"}
+
+    parameters = ["beta"]
+    parameters_list = list()
+    if "beta" in parameters:
+        parameters_list.append(Real(0.0, 1.0, name="beta"))
+    parameter_space = Space(parameters_list)
+
+    constraints = dict()
+    if "beta" in parameters:
+        constraints["cst1"] = "beta > 0.0 and beta < 1.0"
+
+    constants = vars(args)
+    matches = list()
+    del constants['p']
+    for key in parameters:
+        if key in constants:
+            matches.append(key)
+    for m in matches:
+        del constants[m]
+    for key, value in constants.items():
+        if isinstance(value, bool):
+            print(f"{key} is {value}")
+            constants[key] = int(value)
+    print(constants)
 
     problem = TuningProblem(input_space, parameter_space, output_space,
-                            objectives, constraints, None)
+                            objectives, constraints, constants=constants)
     computer = Computer(nodes=nodes, cores=cores, hosts=None)
     options = Options()
     options["lite_mode"] = True
@@ -560,7 +579,7 @@ def main():
 
     if args.gptune:
         print("Running GPUTune")
-        runGPTune()
+        runGPTune(args)
     else:
         # solve the problem
         Problem.solveKINSOL(**vars(args))

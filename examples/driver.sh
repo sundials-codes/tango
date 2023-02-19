@@ -23,29 +23,23 @@ set -e
 rm -rf output/
 rm -rf gptune.db/
 
-# python stripped_down_tango_example_kinsol_gptune.py \
-#        --beta 0.4
-
-# ./plot_output.py \
-#     output/*Fresid.txt
+python stripped_down_tango_example_kinsol_gptune.py \
+       --beta 0.4
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --gptune
-
-# python stripped_down_tango_example_kinsol_gptune.py \
-#        --beta 0.4 --mAA 3
+       --beta 0.4 --mAA 3
 
 # python stripped_down_tango_example_kinsol_gptune.py \
 #        --beta_adapt --mAA 3
 
-# python stripped_down_tango_example_kinsol_gptune.py \
-#        --beta 0.4 --mAA 5 --adaptmAA
+python stripped_down_tango_example_kinsol_gptune.py \
+       --beta 0.4 --mAA 5 --adaptmAA
 
 # python stripped_down_tango_example_kinsol_gptune.py \
 #        --beta 0.4 --beta_adapt --mAA 5 --adaptmAA
 
-# ./plot_output.py \
-#     output/*Fresid.txt
+./plot_output.py \
+    output/*Fresid.txt
 
 
 # ./plot_output.py \
@@ -56,3 +50,6 @@ python stripped_down_tango_example_kinsol_gptune.py \
 #     output-compare-norms/*Rresid_Max_*.txt \
 #     output-compare-norms/*Rresid_RMS_*.txt \
 #     --legend "L2" "MAX" "RMS" "R-L2" "R-MAX" "R-RMS"
+
+# python stripped_down_tango_example_kinsol_gptune.py \
+#        --gptune
