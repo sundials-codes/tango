@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # python stripped_down_tango_example_kinsol_gptune.py \
 #        --beta 0.10
 
@@ -19,24 +21,31 @@
 #        --beta 0.60
 
 rm -rf output/
+rm -rf gptune.db/
+
+# python stripped_down_tango_example_kinsol_gptune.py \
+#        --beta 0.4
+
+# ./plot_output.py \
+#     output/*Fresid.txt
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4
+       --gptune
 
-python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4 --mAA 3
+# python stripped_down_tango_example_kinsol_gptune.py \
+#        --beta 0.4 --mAA 3
 
-python stripped_down_tango_example_kinsol_gptune.py \
-       --beta_adapt --mAA 3
+# python stripped_down_tango_example_kinsol_gptune.py \
+#        --beta_adapt --mAA 3
 
-python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4 --mAA 5 --adaptmAA
+# python stripped_down_tango_example_kinsol_gptune.py \
+#        --beta 0.4 --mAA 5 --adaptmAA
 
-python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4 --beta_adapt --mAA 5 --adaptmAA
+# python stripped_down_tango_example_kinsol_gptune.py \
+#        --beta 0.4 --beta_adapt --mAA 5 --adaptmAA
 
-./plot_output.py \
-    output/*Fresid.txt
+# ./plot_output.py \
+#     output/*Fresid.txt
 
 
 # ./plot_output.py \

@@ -30,6 +30,107 @@ from tango.extras import noisyflux_mod as noisyflux
 
 import kinsol as kin
 
+from autotune.search import *
+from autotune.space import *
+from autotune.problem import *
+
+from computer import Computer
+from options import Options
+from data import Data
+from gptune import GPTune
+from database import GetMachineConfiguration
+
+# ****** Input Options ****** #
+def parse_args():
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Run Shestakov example')
+
+    # problem setup options
+    parser.add_argument('--p', type=float, default=2.0,
+                        help='power for analytic flux')
+
+    parser.add_argument('--N', type=int, default=500,
+                        help='number of spatial grid points')
+
+    # initial guess options
+    parser.add_argument('--IC', type=str, default='pow',
+                        choices=['pow', 'const', 'lin', 'rand', 'solp', 'sol'],
+                        help='set initial condition type')
+
+    parser.add_argument('--IC_n0', type=float, default=2.0e-2,
+                        help='boundary value at x = 0 (left) in pow IC')
+
+    parser.add_argument('--IC_q', type=float, default=1.0,
+                        help='power in pow IC')
+
+    parser.add_argument('--IC_const', type=float, default=1.0,
+                        help='value for constant IC')
+
+    parser.add_argument('--IC_stddev', type=float, default=0.001,
+                        help='standard deviation for rand IC')
+
+    parser.add_argument('--IC_dev', type=float, default=0.1,
+                        help='deviation for solp IC')
+
+    # flux splitter options
+    parser.add_argument('--Dmin', type=float, default=1e-5,
+                        help='Minimum D value')
+
+    parser.add_argument('--Dmax', type=float, default=1e13,
+                        help='Maximum D value')
+
+    parser.add_argument('--dpdxThreshold', type=float, default=10,
+                        help='dpdx threshold value')
+
+    # noisy flux options
+    parser.add_argument('--addnoise', action='store_true',
+                        help='add noise to flux values')
+
+    parser.add_argument('--noise_Lac', type=float, default=0.2,
+                        help='correlation length of noise')
+
+    parser.add_argument('--noise_amplitude', type=float, default=0.1,
+                        help='amplitude of noise')
+
+    # KINSOL options
+    parser.add_argument('--tol', type=float, default=1.0e-11,
+                        help='Relaxation parameter for profile')
+
+    parser.add_argument('--beta', type=float, default=1.0,
+                        help='Relaxation parameter for profile')
+
+    parser.add_argument('--beta_adapt', action='store_true',
+                        help='Adapt relaxation (KINSOL)')
+
+    parser.add_argument('--beta_adapt_factor', type=float, default=0.5,
+                        help='Adapt relaxation factor (KINSOL)')
+
+    parser.add_argument('--maxIters', type=int, default=200,
+                        help='maximum number iterations')
+
+    parser.add_argument('--mAA', type=int, default=0,
+                        help='Anderson acceleration depth')
+
+    parser.add_argument('--delayAA', type=int, default=0,
+                        help='number of iterations to delay Anderson start')
+
+    parser.add_argument('--adaptmAA', action='store_true',
+                        help='adapt the acceleration depth')
+
+    # output options
+    parser.add_argument('--outputdir', type=str, default='output',
+                        help='output directory')
+
+    parser.add_argument('--gptune', action='store_true',
+                        help='Run with GPTune')
+
+    # parse command line args
+    args = parser.parse_args()
+
+    return args
+
 
 # ****** Solution ****** #
 def steady_state_solution(x, nL, p=2, S0=1, delta=0.1, L=1):
@@ -91,10 +192,8 @@ class Problem:
 
     def setup(args):
 
-        # create stuff
-
         # Domain length [0, L], number of grid points, and flux power
-        L = args.L
+        L = 1.0
         N = args.N
         p = args.p
 
@@ -103,26 +202,20 @@ class Problem:
         Problem.x = np.arange(N) * Problem.dx
 
         # Boundary condition at x = L
-        Problem.nL = args.nL
+        Problem.nL = 1.0e-2
 
         # Time step size (1e4 is effectively infinite)
-        Problem.dt = args.dt
-
-        # Counters
-        Problem.numGEvals = 0  # number of G evaluations
-        Problem.numIters = 0   # number of fixed point iterations
+        Problem.dt = 1.0e4
 
         # Instantiate flux model
         if args.addnoise:
-            fluxModel = FluxModel(Problem.dx, p=p,
-                                  firstOrderEdge=args.firstOrderEdge)
+            fluxModel = FluxModel(Problem.dx, p=p)
             Problem.fluxModel = noisyflux.NoisyFlux(fluxModel,
                                                     args.noise_amplitude,
                                                     args.noise_Lac,
                                                     Problem.dx)
         else:
-            Problem.fluxModel = FluxModel(Problem.dx, p=p,
-                                          firstOrderEdge=args.firstOrderEdge)
+            Problem.fluxModel = FluxModel(Problem.dx, p=p)
 
         # Initialize FluxSplitter
         # for many problems, the exact value of these parameters doesn't matter
@@ -175,13 +268,12 @@ class Problem:
         print("  Mesh spacing dx          =", Problem.dx)
         print("  Right boundary value     =", Problem.nL)
         print("  Time step size           =", Problem.dt)
-        print("  1st order edge           =", args.firstOrderEdge)
         print("  D minimum                =", args.Dmin)
         print("  D maximum                =", args.Dmax)
         print("  dp/dx threshold          =", args.dpdxThreshold)
         print("  Flux power               =", p)
         print("  Relaxation beta          =", args.beta)
-        print("  Max iterations           =", args.maxIterations)
+        print("  Max iterations           =", args.maxIters)
         print("  Acceleration depth       =", args.mAA)
         print("  Acceleration delay       =", args.delayAA)
         print("  Adapt Acceleration depth =", args.adaptmAA)
@@ -197,19 +289,34 @@ class Problem:
             print("  IC dev                   =", args.IC_dev)
 
         # always save residual history
-        Problem.F_hist = np.zeros((args.maxIterations, N))
-        Problem.R_hist = np.zeros((args.maxIterations, N))
+        Problem.F_hist = np.zeros((args.maxIters, N))
+        Problem.R_hist = np.zeros((args.maxIters, N))
 
-    def Gfun(profile_old):
+
+    def Gfun(sunvec_profile_old, sunvec_profile_new, user_data):
+
+        # extract arrays
+        profile_old = kin.N_VGetData(sunvec_profile_old)
+        profile_new = kin.N_VGetData(sunvec_profile_new)
 
         # get turbulent flux
-        flux = Problem.fluxModel.get_flux(profile_old)
+        try:
+            flux = Problem.fluxModel.get_flux(profile_old)
+        except Exception as e:
+            print(e)
+            print("\nERROR: get_flux failed")
+            return -1
 
         # transform flux into effective transport coefficients.  H2=D, H3=-c
         # [use flux split class from lodestro_method]
-        (D, c, _) = Problem.fluxSplitter.flux_to_transport_coeffs(flux,
-                                                                  profile_old,
-                                                                  Problem.dx)
+        try:
+            (D, c, _) = Problem.fluxSplitter.flux_to_transport_coeffs(flux,
+                                                                      profile_old,
+                                                                      Problem.dx)
+        except Exception as e:
+            print(e)
+            print("\nERROR: flux_to_transport_coeffs failed")
+            return -1
 
         # H's represent terms in the transport equation
         # H2const could represent a background level of (classical) diffusion
@@ -221,9 +328,14 @@ class Problem:
         H3 = -c
 
         # construct equation for the new profile
-        (A, B, C, f) = HToMatrixFD.H_to_matrix(Problem.dt, Problem.dx,
-                                               Problem.nL, Problem.n_mminus1,
-                                               H1, H2=H2, H3=H3, H7=H7)
+        try:
+            (A, B, C, f) = HToMatrixFD.H_to_matrix(Problem.dt, Problem.dx,
+                                                   Problem.nL, Problem.n_mminus1,
+                                                   H1, H2=H2, H3=H3, H7=H7)
+        except Exception as e:
+            print(e)
+            print("\nERROR: matrix setup failed")
+            return -1
 
         # see fieldgroups.calculate_residual() for additional information on
         # the residual calculation
@@ -236,7 +348,12 @@ class Problem:
         resid = resid / np.max(np.abs(f))
 
         # solve matrix equation for new profile n_{i+1} = G(n_i)
-        profile_new = HToMatrixFD.solve(A, B, C, f)
+        try:
+            profile_new[:] = HToMatrixFD.solve(A, B, C, f)
+        except Exception as e:
+            print(e)
+            print("\nERROR: matrix solve failed")
+            return -1
 
         # compute F_i = G(n_i) - n_i (same as in KINSOL)
         Problem.F_hist[Problem.numGEvals, :] = profile_new - profile_old
@@ -245,28 +362,23 @@ class Problem:
         # update number of G evals
         Problem.numGEvals += 1
 
-        return profile_new
-
-    def GfunKINSOL(sunvec_profile_old, sunvec_profile_new, user_data):
-
-        # extract arrays
-        profile_old = kin.N_VGetData(sunvec_profile_old)
-        profile_new = kin.N_VGetData(sunvec_profile_new)
-
-        profile_new[:] = Problem.Gfun(profile_old)
-
         # update iteration count
         Problem.numIters += 1
 
         return 0
 
-    def solveKINSOL(profile_old, maxIterations, tol=1.0e-11, beta=1.0,
-                    beta_adapt=False, beta_adapt_factor=0.5, m=0, delay=0,
-                    adapt_m=False):
+
+    def solveKINSOL(**kwargs):
+
+        # Reset counts and saved values
+        Problem.numGEvals = 0
+        Problem.numIters = 0
+        Problem.F_hist[:] = float("nan")
+        Problem.R_hist[:] = float("nan")
 
         # solution and scaling arrays
-        profile_new = np.copy(profile_old)
-        scale = np.ones_like(profile_old)
+        profile_new = np.copy(Problem.n_mminus1)
+        scale = np.ones_like(Problem.n_mminus1)
 
         # create N_Vector objects
         sunvec_profile = kin.N_VMake_Serial(profile_new)
@@ -276,18 +388,18 @@ class Problem:
         kmem = kin.KINCreate()
 
         # set number of prior residuals used in Anderson acceleration
-        if m > 0:
-            flag = kin.KINSetMAA(kmem, m)
+        if "mAA" in kwargs:
+            flag = kin.KINSetMAA(kmem, kwargs["mAA"])
             if flag < 0:
                 raise RuntimeError(f'KINSetMAA returned {flag}')
 
-            if adapt_m:
-                flag = kin.KINSetAdaptiveMAA(kmem, 1)
+            if "adaptmAA" in kwargs:
+                flag = kin.KINSetAdaptiveMAA(kmem, int(kwargs["adaptmAA"]))
                 if flag < 0:
                     raise RuntimeError(f'KINSetAdaptiveMAA returned {flag}')
 
         # wrap the python system function so that it is callable from C
-        sysfn = kin.WrapPythonSysFn(Problem.GfunKINSOL)
+        sysfn = kin.WrapPythonSysFn(Problem.Gfun)
 
         # initialize KINSOL
         flag = kin.KINInitPy(kmem, sysfn, sunvec_profile)
@@ -295,19 +407,21 @@ class Problem:
             raise RuntimeError(f'KINInitPy returned {flag}')
 
         # specify stopping tolerance based on residual
-        flag = kin.KINSetFuncNormTol(kmem, tol)
-        if flag < 0:
-            raise RuntimeError(f'KINSetFuncNormTol returned {flag}')
+        if "tol" in kwargs:
+            flag = kin.KINSetFuncNormTol(kmem, kwargs["tol"])
+            if flag < 0:
+                raise RuntimeError(f'KINSetFuncNormTol returned {flag}')
 
         # ignore convergence test and run to max iterations
-        flag = kin.KINSetNumMaxIters(kmem, maxIterations)
-        if flag < 0:
-            raise RuntimeError(f'KINSetUseMaxIters returned {flag}')
+        if "maxIters" in kwargs:
+            flag = kin.KINSetNumMaxIters(kmem, kwargs["maxIters"])
+            if flag < 0:
+                raise RuntimeError(f'KINSetSetNumMaxIters returned {flag}')
 
         # ignore convergence test and run to max iterations
-        flag = kin.KINSetUseMaxIters(kmem, 1)
-        if flag < 0:
-            raise RuntimeError(f'KINSetUseMaxIters returned {flag}')
+        # flag = kin.KINSetUseMaxIters(kmem, 1)
+        # if flag < 0:
+        #     raise RuntimeError(f'KINSetUseMaxIters returned {flag}')
 
         # return the newest iteration at end
         flag = kin.KINSetReturnNewest(kmem, 1)
@@ -315,28 +429,29 @@ class Problem:
             raise RuntimeError(f'KINSetReturnNewest returned {flag}')
 
         # set Anderson acceleration delay
-        if delay > 0:
-            flag = kin.KINSetDelayAA(kmem, delay)
+        if "delayAA" in kwargs:
+            flag = kin.KINSetDelayAA(kmem, kwargs["delayAA"])
             if flag < 0:
                 raise RuntimeError(f'KINSetDelayAA returned {flag}')
 
         # set fixed point and Anderson acceleration damping
-        if beta < 1.0:
-            flag = kin.KINSetDamping(kmem, beta)
+        if "beta" in kwargs:
+            flag = kin.KINSetDamping(kmem, kwargs["beta"])
             if flag < 0:
                 raise RuntimeError(f'KINSetDamping returned {flag}')
 
-            flag = kin.KINSetDampingAA(kmem, beta)
+            flag = kin.KINSetDampingAA(kmem, kwargs["beta"])
             if flag < 0:
                 raise RuntimeError(f'KINSetDampingAA returned {flag}')
 
-        if beta_adapt:
-            flag = kin.KINSetAdaptiveDampingAA(kmem, 1)
+        if "beta_adapt" in kwargs:
+            flag = kin.KINSetAdaptiveDampingAA(kmem, int(kwargs["beta_adapt"]))
             if flag < 0:
                 raise RuntimeError(f'KINSetAdaptiveDampingAA returned {flag}')
 
-        if beta_adapt_factor != 0.5:
-            flag = kin.KINSetAdaptiveDampingFactorAA(kmem, beta_adapt_factor)
+        if "beta_adapt_factor" in kwargs:
+            flag = kin.KINSetAdaptiveDampingFactorAA(kmem,
+                                                     kwargs["beta_adapt_factor"])
             if flag < 0:
                 raise RuntimeError(f'KINSetAdaptiveDampingFactorAA returned {flag}')
 
@@ -356,175 +471,137 @@ class Problem:
             raise RuntimeError(f'KINSetPrintLevel returned {flag}')
 
         # Call KINSOL to solve problem
-        flag = kin.KINSol(kmem,            # KINSOL memory block
-                          sunvec_profile,  # initial guess; solution vector
-                          kin.KIN_FP,      # global strategy choice
-                          sunvec_scale,    # scaling vector for the variable
-                          sunvec_scale)    # scaling vector for function values
-        if flag < 0:
-            raise RuntimeError(f'KINSol returned {flag}')
-        elif flag > 0:
-            print(f'KINSol returned {flag}')
-        else:
-            print('KINSol finished')
+        kin_flag = kin.KINSol(kmem,            # KINSOL memory block
+                              sunvec_profile,  # initial guess; solution vector
+                              kin.KIN_FP,      # global strategy choice
+                              sunvec_scale,    # scaling vector for the variable
+                              sunvec_scale)    # scaling vector for function values
 
         # Print solution and solver statistics
         flag, fnorm = kin.KINGetFuncNorm(kmem)
         if flag < 0:
             raise RuntimeError(f'KINGetFuncNorm returned {flag}')
 
-        print('Computed solution (||F|| = %Lg):\n' % fnorm)
+        print('Computed solution (||F|| = %Lg):' % fnorm)
+        print('Interations:', Problem.numIters)
+
+        if kin_flag < 0:
+            print(f'KINSol failed with return value {kin_flag}')
+            return 200
+        elif kin_flag > 0:
+            print(f'KINSol returned {kin_flag}')
+        else:
+            print('KINSol finished')
 
         # Free memory
         # kin.KINFree(kmem)
         # kin.N_VDestroy(sunvec_profile)
         # kin.N_VDestroy(sunvec_scale)
 
-        return profile_new
+        return Problem.numIters
+
+
+def objectives(point):
+
+    print(point)
+
+    # call solver and return the total number of iterations
+    iters = Problem.solveKINSOL(**point)
+
+    return [iters]
+
+def runGPTune():
+
+    import os
+    global nodes
+    global cores
+
+    (machine, processor, nodes, cores) = GetMachineConfiguration()
+    print ("machine: " + machine + " processor: " + processor + " num_nodes: " + str(nodes) + " num_cores: " + str(cores))
+
+    input_space = Space([Integer(2, 50, name="p")])
+    parameter_space = Space([Real(0.0, 1.0, name="beta")])
+    output_space = Space([Real(0, float('Inf'), name="iters", optimize=True)])
+    constraints = {"cst1": "beta > 0.0 and beta < 1.0"}
+
+    problem = TuningProblem(input_space, parameter_space, output_space,
+                            objectives, constraints, None)
+    computer = Computer(nodes=nodes, cores=cores, hosts=None)
+    options = Options()
+    options["lite_mode"] = True
+    options['verbose'] = False
+    options.validate(computer=computer)
+
+    data = Data(problem)
+    gptune = GPTune(problem, computer=computer, data=data, options=options,
+                    driverabspath=os.path.abspath(__file__))
+
+    giventask = [[2]]
+    (data, models, stats) = gptune.SLA(20, 10, Tgiven=giventask)
+
+    print("stats: ", stats)
+    """ Print all input and parameter samples """
+    print("  Tasks:", data.I)
+    print("  Parameter Samples:", data.P)
+    print("  Outputs:", data.O)
+    print(f"    Output[{np.argmin(data.O)}] = {data.O[np.argmin(data.O)]}")
+    print(f"    Params[{np.argmin(data.O)}] = {data.P[np.argmin(data.O)]}")
 
 
 # ****** Main ***** #
 def main():
 
     import os
-    import argparse
 
-    parser = argparse.ArgumentParser(description='Run Shestakov example')
-
-    # problem setup options
-    parser.add_argument('--p', type=float, default=2.0,
-                        help='power for analytic flux')
-    parser.add_argument('--L', type=float, default=1.0,
-                        help='domain size [0,L]')
-    parser.add_argument('--N', type=int, default=500,
-                        help='number of spatial grid points')
-    parser.add_argument('--nL', type=float, default=1.0e-2,
-                        help='boundary value at x = L (right)')
-    parser.add_argument('--dt', type=float, default=1e4,
-                        help='time step size')
-    parser.add_argument('--centerdiff', dest='firstOrderEdge',
-                        action='store_false',
-                        help='''use second order center differences in
-                        FluxModel''')
-
-    # initial guess options
-    parser.add_argument('--IC', type=str, default='pow',
-                        choices=['pow', 'const', 'lin', 'rand', 'solp', 'sol'],
-                        help='set initial condition type')
-    parser.add_argument('--IC_n0', type=float, default=2.0e-2,
-                        help='boundary value at x = 0 (left) in pow IC')
-    parser.add_argument('--IC_q', type=float, default=1.0,
-                        help='power in pow IC')
-    parser.add_argument('--IC_const', type=float, default=1.0,
-                        help='value for constant IC')
-    parser.add_argument('--IC_stddev', type=float, default=0.001,
-                        help='standard deviation for rand IC')
-    parser.add_argument('--IC_dev', type=float, default=0.1,
-                        help='deviation for solp IC')
-
-    # flux splitter options
-    parser.add_argument('--Dmin', type=float, default=1e-5,
-                        help='Minimum D value')
-    parser.add_argument('--Dmax', type=float, default=1e13,
-                        help='Maximum D value')
-    parser.add_argument('--dpdxThreshold', type=float, default=10,
-                        help='dpdx threshold value')
-
-    # noisy flux options
-    parser.add_argument('--addnoise', action='store_true',
-                        help='add noise to flux values')
-    parser.add_argument('--noise_Lac', type=float, default=0.2,
-                        help='correlation length of noise')
-    parser.add_argument('--noise_amplitude', type=float, default=0.1,
-                        help='amplitude of noise')
-
-    # relaxation and iteration options
-    parser.add_argument('--beta', type=float, default=1.0,
-                        help='Relaxation parameter for profile')
-    parser.add_argument('--beta_adapt', action='store_true',
-                        help='Adapt relaxation (KINSOL)')
-    parser.add_argument('--beta_adapt_factor', type=float, default=0.5,
-                        help='Adapt relaxation factor (KINSOL)')
-    parser.add_argument('--maxIterations', type=int, default=150,
-                        help='maximum number iterations')
-
-    # other options
-    parser.add_argument('--ignore', action='store_true',
-                        help='ignore negative values in the solution')
-    parser.add_argument('--clip', action='store_true',
-                        help='clip negative values in the solution')
-
-    # KINSOL options
-    parser.add_argument('--mAA', type=int, default=0,
-                        help='Anderson acceleration depth')
-    parser.add_argument('--delayAA', type=int, default=0,
-                        help='number of iterations to delay Anderson start')
-    parser.add_argument('--adaptmAA', action='store_true',
-                        help='adapt the acceleration depth')
-
-    # output options
-    parser.add_argument('--outputdir', type=str, default='output',
-                        help='output directory')
-
-    # debugging options
-    parser.add_argument('--debug', action='store_true',
-                        help='enable debugging output')
-
-    # parse command line args
-    args = parser.parse_args()
+    args = parse_args()
 
     # setup the problem
     Problem.setup(args)
 
-    # solve the problem
-    nInitial = np.copy(Problem.n_mminus1)
+    if args.gptune:
+        print("Running GPUTune")
+        runGPTune()
+    else:
+        # solve the problem
+        Problem.solveKINSOL(**vars(args))
 
-    nFinal = Problem.solveKINSOL(nInitial,
-                                 args.maxIterations,
-                                 beta=args.beta,
-                                 beta_adapt=args.beta_adapt,
-                                 beta_adapt_factor=args.beta_adapt_factor,
-                                 m=args.mAA,
-                                 delay=args.delayAA,
-                                 adapt_m=args.adaptmAA)
+        # print final resiudal and error
+        print("Finished:")
+        print("  Interations =", Problem.numIters)
 
-    # print final resiudal and error
-    print("Finished:")
-    print("  Interations =", Problem.numIters)
+        # iteration range to plot
 
-    # iteration range to plot
+        # initial to end - 1 (length numIters)
+        iters = np.arange(0, Problem.numIters)
 
-    # initial to end - 1 (length numIters)
-    iters = np.arange(0, Problem.numIters)
+        # initial to end (length numIters + 1)
+        itersp1 = np.arange(0, Problem.numIters + 1)
 
-    # initial to end (length numIters + 1)
-    itersp1 = np.arange(0, Problem.numIters + 1)
+        # write history to file
 
-    # write history to file
+        outdir = args.outputdir
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
 
-    outdir = args.outputdir
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
+        # add a prefix for different configurations
+        prefix = 'p_' + str(args.p)
+        prefix = prefix + '_beta_' + str(args.beta)
+        prefix = prefix + '_adapt-beta_' + str(args.beta_adapt)
+        prefix = prefix + '_adapt-beta-factor_' + str(args.beta_adapt_factor)
+        prefix = prefix + '_m_' + str(args.mAA)
+        prefix = prefix + '_delay_' + str(args.delayAA)
+        prefix = prefix + '_adapt-m_' + str(args.adaptmAA)
+        if args.addnoise:
+            prefix = prefix + '_noise'
 
-    # add a prefix for different configurations
-    prefix = 'p_' + str(args.p)
-    prefix = prefix + '_beta_' + str(args.beta)
-    prefix = prefix + '_adapt-beta_' + str(args.beta_adapt)
-    prefix = prefix + '_adapt-beta-factor_' + str(args.beta_adapt_factor)
-    prefix = prefix + '_m_' + str(args.mAA)
-    prefix = prefix + '_delay_' + str(args.delayAA)
-    prefix = prefix + '_adapt-m_' + str(args.adaptmAA)
-    if args.addnoise:
-        prefix = prefix + '_noise'
-
-    # save residual norm history
-    resF_nrm = np.zeros((Problem.numIters, 1))
-    resR_nrm = np.zeros((Problem.numIters, 1))
-    for i in iters:
-        resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
-        resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
-    np.savetxt(outdir + '/' + prefix + '_Fresid.txt', resF_nrm)
-    np.savetxt(outdir + '/' + prefix + '_Rresid.txt', resR_nrm)
+        # save residual norm history
+        resF_nrm = np.zeros((Problem.numIters, 1))
+        resR_nrm = np.zeros((Problem.numIters, 1))
+        for i in iters:
+            resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
+            resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
+        np.savetxt(outdir + '/' + prefix + '_Fresid.txt', resF_nrm)
+        np.savetxt(outdir + '/' + prefix + '_Rresid.txt', resR_nrm)
 
 # ****** run main ****** #
 if __name__ == '__main__':
