@@ -619,6 +619,8 @@ def main():
         for i in iters:
             resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
             resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
+            # resF_nrm[i] = np.sqrt(np.mean(Problem.F_hist[i, :]**2))
+            # resR_nrm[i] = np.sqrt(np.mean(Problem.R_hist[i, :]**2))
         np.savetxt(outdir + '/' + prefix + '_Fresid.txt', resF_nrm)
         np.savetxt(outdir + '/' + prefix + '_Rresid.txt', resR_nrm)
 
