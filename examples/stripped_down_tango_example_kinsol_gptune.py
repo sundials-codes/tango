@@ -101,11 +101,11 @@ def parse_args():
     parser.add_argument('--beta', type=float, default=1.0,
                         help='Relaxation parameter for profile')
 
-    parser.add_argument('--beta_adapt', action='store_true',
-                        help='Adapt relaxation (KINSOL)')
+    parser.add_argument('--adapt_beta', action='store_true',
+                        help='Adapt relaxation')
 
-    parser.add_argument('--beta_adapt_factor', type=float, default=0.5,
-                        help='Adapt relaxation factor (KINSOL)')
+    parser.add_argument('--adapt_beta_factor', type=float, default=0.5,
+                        help='Adapt relaxation factor')
 
     parser.add_argument('--maxIters', type=int, default=500,
                         help='maximum number iterations')
@@ -116,15 +116,21 @@ def parse_args():
     parser.add_argument('--delayAA', type=int, default=0,
                         help='number of iterations to delay Anderson start')
 
-    parser.add_argument('--adaptmAA', action='store_true',
+    parser.add_argument('--adapt_mAA', action='store_true',
                         help='adapt the acceleration depth')
+
+    parser.add_argument('--adapt_mAA_factor', type=float, default=1.0,
+                        help='Adapt m factor')
 
     # output options
     parser.add_argument('--outputdir', type=str, default='output',
                         help='output directory')
 
-    parser.add_argument('--gptune', action='store_true',
-                        help='Run with GPTune')
+    parser.add_argument('--gptune', type=str, nargs='+', default=None,
+                        choices=['beta', 'mAA', 'delayAA', 'adapt_mAA',
+                                 'adapt_mAA_factor', 'adapt_beta',
+                                 'adapt_beta_factor'],
+                        help='GPTune optimization parameters')
 
     # parse command line args
     args = parser.parse_args()
@@ -276,7 +282,7 @@ class Problem:
         print("  Max iterations           =", args.maxIters)
         print("  Acceleration depth       =", args.mAA)
         print("  Acceleration delay       =", args.delayAA)
-        print("  Adapt Acceleration depth =", args.adaptmAA)
+        print("  Adapt Acceleration depth =", args.adapt_mAA)
         print("  Initial condition        =", args.IC)
         if args.IC == 'pow':
             print("  IC power                 =", args.IC_q)
@@ -389,14 +395,18 @@ class Problem:
 
         # set number of prior residuals used in Anderson acceleration
         if "mAA" in kwargs:
-            flag = kin.KINSetMAA(kmem, kwargs["mAA"])
+            flag = kin.KINSetMAA(kmem, int(kwargs["mAA"]))
             if flag < 0:
                 raise RuntimeError(f'KINSetMAA returned {flag}')
 
-            if "adaptmAA" in kwargs:
-                flag = kin.KINSetAdaptiveMAA(kmem, int(kwargs["adaptmAA"]))
+            if "adapt_mAA" in kwargs:
+                flag = kin.KINSetAdaptiveMAA(kmem, int(kwargs["adapt_mAA"]))
                 if flag < 0:
                     raise RuntimeError(f'KINSetAdaptiveMAA returned {flag}')
+
+                flag = kin.KINSetAdaptiveMAAFactor(kmem, kwargs["adapt_mAA_factor"])
+                if flag < 0:
+                    raise RuntimeError(f'KINSetAdaptiveMAAFactor returned {flag}')
 
         # wrap the python system function so that it is callable from C
         sysfn = kin.WrapPythonSysFn(Problem.Gfun)
@@ -430,7 +440,7 @@ class Problem:
 
         # set Anderson acceleration delay
         if "delayAA" in kwargs:
-            flag = kin.KINSetDelayAA(kmem, kwargs["delayAA"])
+            flag = kin.KINSetDelayAA(kmem, int(kwargs["delayAA"]))
             if flag < 0:
                 raise RuntimeError(f'KINSetDelayAA returned {flag}')
 
@@ -444,16 +454,16 @@ class Problem:
             if flag < 0:
                 raise RuntimeError(f'KINSetDampingAA returned {flag}')
 
-        if "beta_adapt" in kwargs:
-            flag = kin.KINSetAdaptiveDampingAA(kmem, int(kwargs["beta_adapt"]))
+        if "adapt_beta" in kwargs:
+            flag = kin.KINSetAdaptiveDampingAA(kmem, int(kwargs["adapt_beta"]))
             if flag < 0:
                 raise RuntimeError(f'KINSetAdaptiveDampingAA returned {flag}')
 
-        if "beta_adapt_factor" in kwargs:
-            flag = kin.KINSetAdaptiveDampingFactorAA(kmem,
-                                                     kwargs["beta_adapt_factor"])
-            if flag < 0:
-                raise RuntimeError(f'KINSetAdaptiveDampingFactorAA returned {flag}')
+            if "adapt_beta_factor" in kwargs:
+                flag = kin.KINSetAdaptiveDampingFactorAA(kmem,
+                                                         kwargs["adapt_beta_factor"])
+                if flag < 0:
+                    raise RuntimeError(f'KINSetAdaptiveDampingFactorAA returned {flag}')
 
         # set error log file
         flag = kin.KINSetErrFilename(kmem, "kinsol_error.log")
@@ -513,24 +523,59 @@ def runGPTune(args):
     global nodes
     global cores
 
+    print("Running GPUTune")
+    print(f"Optimizing: {args.gptune}")
+
     (machine, processor, nodes, cores) = GetMachineConfiguration()
     print ("machine: " + machine + " processor: " + processor + " num_nodes: " + str(nodes) + " num_cores: " + str(cores))
 
     input_space = Space([Integer(2, 50, name="p")])
     output_space = Space([Real(0, float('Inf'), name="iters", optimize=True)])
 
-    parameters = ["beta"]
+    parameters = args.gptune
     parameters_list = list()
+    parameters_output_list = list()
     if "beta" in parameters:
         parameters_list.append(Real(0.0, 1.0, name="beta"))
+        parameters_output_list.append("beta")
+    if "mAA" in parameters:
+        parameters_list.append(Integer(1, 10, transform="normalize",
+                                       name="mAA"))
+        parameters_output_list.append("mAA")
+    if "delayAA" in parameters:
+        parameters_list.append(Integer(1, 50, transform="normalize",
+                                       name="delayAA"))
+        parameters_output_list.append("delayAA")
+    if "adapt_mAA" in parameters:
+        parameters_list.append(Integer(0, 1, transform="normalize",
+                                       name="adapt_mAA"))
+        parameters_output_list.append("adapt_mAA")
+    if "adapt_mAA_factor" in parameters:
+        parameters_list.append(Real(1.0, 100.0, transform="normalize",
+                                    name="adapt_mAA_factor"))
+        parameters_output_list.append("adapt_mAA_factor")
+    if "adapt_beta" in parameters:
+        parameters_list.append(Integer(0, 1, transform="normalize",
+                                       name="adapt_beta"))
+        parameters_output_list.append("adapt_beta")
+    if "adapt_beta_factor" in parameters:
+        parameters_list.append(Real(0.0, 1.0, transform="normalize",
+                                    name="adapt_beta_factor"))
+        parameters_output_list.append("adapt_beta_factor")
+
     parameter_space = Space(parameters_list)
 
     constraints = dict()
     if "beta" in parameters:
-        constraints["cst1"] = "beta > 0.0 and beta < 1.0"
+        constraints["cst_beta"] = "beta > 0.0 and beta <= 1.0"
+    if "adapt_beta_factor" in parameters:
+        constraints["cst_adapt_beta_factor"] = "adapt_beta_factor > 0.0 and adapt_beta_factor <= 1.0"
+    if "adapt_mAA_factor" in parameters:
+        constraints["cst_adapt_mAA_factor"] = "adapt_mAA_factor > 0.0 and adapt_mAA_factor <= 100.0"
 
     constants = dict(vars(args))
     matches = list()
+    del constants['gptune']
     del constants['p']
     for key in parameters:
         if key in constants:
@@ -545,6 +590,7 @@ def runGPTune(args):
 
     problem = TuningProblem(input_space, parameter_space, output_space,
                             objectives, constraints, constants=constants)
+
     computer = Computer(nodes=nodes, cores=cores, hosts=None)
     options = Options()
     options["lite_mode"] = True
@@ -563,8 +609,9 @@ def runGPTune(args):
     print("  Tasks:", data.I)
     print("  Parameter Samples:", data.P)
     print("  Outputs:", data.O)
-    print(f"    Output[{np.argmin(data.O)}] = {data.O[np.argmin(data.O)]}")
-    print(f"    Params[{np.argmin(data.O)}] = {data.P[np.argmin(data.O)]}")
+    print(f"    Optimum iterations: {data.O[np.argmin(data.O)]}")
+    print(f"    Optimizing: {parameters_output_list}")
+    print(f"    Optimum Params: {data.P[np.argmin(data.O)]}")
 
 
 # ****** Main ***** #
@@ -577,8 +624,7 @@ def main():
     # setup the problem
     Problem.setup(args)
 
-    if args.gptune:
-        print("Running GPUTune")
+    if args.gptune is not None:
         runGPTune(args)
     else:
         # solve the problem
@@ -605,11 +651,11 @@ def main():
         # add a prefix for different configurations
         prefix = 'p_' + str(args.p)
         prefix = prefix + '_beta_' + str(args.beta)
-        prefix = prefix + '_adapt-beta_' + str(args.beta_adapt)
-        prefix = prefix + '_adapt-beta-factor_' + str(args.beta_adapt_factor)
+        prefix = prefix + '_adapt-beta_' + str(args.adapt_beta)
+        prefix = prefix + '_adapt-beta-factor_' + str(args.adapt_beta_factor)
         prefix = prefix + '_m_' + str(args.mAA)
         prefix = prefix + '_delay_' + str(args.delayAA)
-        prefix = prefix + '_adapt-m_' + str(args.adaptmAA)
+        prefix = prefix + '_adapt-m_' + str(args.adapt_mAA)
         if args.addnoise:
             prefix = prefix + '_noise'
 

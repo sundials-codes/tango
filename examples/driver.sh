@@ -8,10 +8,19 @@ python stripped_down_tango_example_kinsol_gptune.py \
        --beta 0.4
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.282386 --mAA 5 --delay 1
+       --beta 0.4 --mAA 3 --delayAA 5
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4 --mAA 3 --delayAA 5
+       --beta 0.501146 --mAA 9 --delayAA 4
+
+python stripped_down_tango_example_kinsol_gptune.py \
+       --beta 0.203328 --adapt_beta --mAA 5 --adapt_beta_factor 0.427768
+
+python stripped_down_tango_example_kinsol_gptune.py \
+       --beta 0.455037 --adapt_beta --mAA 2 --delayAA 11 --adapt_beta_factor 0.202435
+
+python stripped_down_tango_example_kinsol_gptune.py \
+       --beta 0.377918 --adapt_mAA --mAA 1 --adapt_mAA_factor 100.0
 
 ./plot_output.py \
     output/*Fresid.txt
