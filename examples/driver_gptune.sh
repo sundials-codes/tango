@@ -9,7 +9,7 @@ run_tests() {
     IC=$2
     tol=$3
 
-    output_dir="gptune-output-$1"
+    output_dir="gptune_output_p_$1_tol_$3"
 
     # -------------
     # No adaptivity
@@ -122,5 +122,14 @@ run_tests() {
 
 rm -rf gptune.db/
 
+run_tests 2 pow 1.0e-4
+run_tests 10 lin 1.0e-4
+
 run_tests 2 pow 1.0e-6
 run_tests 10 lin 1.0e-6
+
+run_tests 2 pow 1.0e-8
+run_tests 10 lin 1.0e-8
+
+run_tests 2 pow 1.0e-11
+run_tests 10 lin 1.0e-11
