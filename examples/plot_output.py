@@ -75,22 +75,33 @@ def main():
 
         # get method name and parameters, set title
         method = "KINSOL"
-        power = fname[1]
-        beta = fname[3]
-        adapt = fname[5]
-        adapt_factor = fname[7]
-        mAA = fname[9]
-        delayAA = fname[11]
-        adapt_m = fname[13]
+        power = float(fname[1])
+        beta = float(fname[3])
+        adapt_b = int(fname[5] == 'True')
+        adapt_b_factor = float(fname[7])
+        mAA = int(fname[9])
+        delayAA = int(fname[11])
+        adapt_m = int(fname[13] == 'True')
+        adapt_m_factor = float(fname[15])
 
         # create legend entry for this data
         if args.legend:
             legend = args.legend[fcount]
         elif args.legendinfo:
             legend = make_legend_label(args.legendinfo, method, alpha,
-                                           beta, mAA, delayAA)
+                                       beta, mAA, delayAA)
         else:
-            legend = f'''m {mAA}, delay {delayAA}, beta {beta}, adapt beta {adapt}, factor {adapt_factor}, adapt m {adapt_m}'''
+            legend = ''
+            if adapt_b:
+                legend = f'$\\beta^*_0$={beta:.2f} ({adapt_b_factor:.2f})'
+            else:
+                legend = f'$\\beta$={beta:.2f}'
+            if mAA > 0 and not adapt_m:
+                legend += f', m={mAA}'
+            if mAA > 0 and adapt_m:
+                legend += f', m=0..{mAA} ({adapt_m_factor:.2f})'
+            if delayAA > 0:
+                legend += f', delay={delayAA}'
 
         # load data
         data = np.loadtxt(outfile)

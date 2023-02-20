@@ -2,25 +2,59 @@
 
 set -e
 
+# ./plot_output.py \
+#     output/*Fresid.txt
+# exit 0
+
 rm -rf output/
 
+# adapt beta and m
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4
+       --p 2 --beta 0.347423 --mAA 9 --delayAA 12 \
+       --adapt_mAA --adapt_mAA_factor 39.210692 \
+       --adapt_beta --adapt_beta_factor 0.174528 \
+       --maxIters 30 --useMaxIters
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.4 --mAA 3 --delayAA 5
+       --p 2 --beta 0.150308 --mAA 1 \
+       --adapt_mAA --adapt_mAA_factor 1.0 \
+       --adapt_beta --adapt_beta_factor 0.533333 \
+       --maxIters 30 --useMaxIters
+
+# adapt beta
+python stripped_down_tango_example_kinsol_gptune.py \
+       --p 2 --beta 0.282037 --mAA 7 --delayAA 5 \
+       --adapt_beta --adapt_beta_factor 0.450109 \
+       --maxIters 30 --useMaxIters
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.501146 --mAA 9 --delayAA 4
+       --p 2 --beta 0.25195 --mAA 10 \
+       --adapt_beta --adapt_beta_factor 0.239981 \
+       --maxIters 30 --useMaxIters
+
+# adapt m (not useful, opt max = 1)
+python stripped_down_tango_example_kinsol_gptune.py \
+       --p 2 --beta 0.380332 --mAA 1 --delayAA 2 \
+       --adapt_mAA --adapt_mAA_factor 100.0 \
+       --maxIters 30 --useMaxIters
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.203328 --adapt_beta --mAA 5 --adapt_beta_factor 0.427768
+       --p 2 --beta 0.349495 --mAA 1 \
+       --adapt_mAA --adapt_mAA_factor 100.0 \
+       --maxIters 30 --useMaxIters
+
+# fixed beta
+python stripped_down_tango_example_kinsol_gptune.py \
+       --p 2 --beta 0.431238 --mAA 9 --delayAA 2 \
+       --maxIters 30 --useMaxIters
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.455037 --adapt_beta --mAA 2 --delayAA 11 --adapt_beta_factor 0.202435
+       --p 2 --beta 0.446298 --mAA 3 \
+       --maxIters 30 --useMaxIters
 
 python stripped_down_tango_example_kinsol_gptune.py \
-       --beta 0.377918 --adapt_mAA --mAA 1 --adapt_mAA_factor 100.0
+       --p 2 --beta 0.43317 \
+       --maxIters 30 --useMaxIters
 
 ./plot_output.py \
     output/*Fresid.txt

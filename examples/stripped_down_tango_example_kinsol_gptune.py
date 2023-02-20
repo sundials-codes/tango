@@ -110,6 +110,9 @@ def parse_args():
     parser.add_argument('--maxIters', type=int, default=500,
                         help='maximum number iterations')
 
+    parser.add_argument('--useMaxIters', action='store_true',
+                        help='Use maxumum number of iterations')
+
     parser.add_argument('--mAA', type=int, default=0,
                         help='Anderson acceleration depth')
 
@@ -429,9 +432,10 @@ class Problem:
                 raise RuntimeError(f'KINSetSetNumMaxIters returned {flag}')
 
         # ignore convergence test and run to max iterations
-        # flag = kin.KINSetUseMaxIters(kmem, 1)
-        # if flag < 0:
-        #     raise RuntimeError(f'KINSetUseMaxIters returned {flag}')
+        if "useMaxIters" in kwargs:
+            flag = kin.KINSetUseMaxIters(kmem, int(kwargs["useMaxIters"]))
+            if flag < 0:
+                raise RuntimeError(f'KINSetUseMaxIters returned {flag}')
 
         # return the newest iteration at end
         flag = kin.KINSetReturnNewest(kmem, 1)
@@ -602,7 +606,7 @@ def runGPTune(args):
                     driverabspath=os.path.abspath(__file__))
 
     giventask = [[args.p]]
-    (data, models, stats) = gptune.SLA(20, 10, Tgiven=giventask)
+    (data, models, stats) = gptune.SLA(50, 10, Tgiven=giventask)
 
     print("stats: ", stats)
     """ Print all input and parameter samples """
@@ -630,20 +634,7 @@ def main():
         # solve the problem
         Problem.solveKINSOL(**vars(args))
 
-        # print final resiudal and error
-        print("Finished:")
-        print("  Interations =", Problem.numIters)
-
-        # iteration range to plot
-
-        # initial to end - 1 (length numIters)
-        iters = np.arange(0, Problem.numIters)
-
-        # initial to end (length numIters + 1)
-        itersp1 = np.arange(0, Problem.numIters + 1)
-
         # write history to file
-
         outdir = args.outputdir
         if not os.path.exists(outdir):
             os.makedirs(outdir)
@@ -656,19 +647,22 @@ def main():
         prefix = prefix + '_m_' + str(args.mAA)
         prefix = prefix + '_delay_' + str(args.delayAA)
         prefix = prefix + '_adapt-m_' + str(args.adapt_mAA)
+        prefix = prefix + '_adapt-m-factor_' + str(args.adapt_mAA_factor)
         if args.addnoise:
             prefix = prefix + '_noise'
 
         # save residual norm history
         resF_nrm = np.zeros((Problem.numIters, 1))
         resR_nrm = np.zeros((Problem.numIters, 1))
-        for i in iters:
+        for i in np.arange(0, Problem.numIters):
             resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
             resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
             # resF_nrm[i] = np.sqrt(np.mean(Problem.F_hist[i, :]**2))
             # resR_nrm[i] = np.sqrt(np.mean(Problem.R_hist[i, :]**2))
         np.savetxt(outdir + '/' + prefix + '_Fresid.txt', resF_nrm)
         np.savetxt(outdir + '/' + prefix + '_Rresid.txt', resR_nrm)
+
+        os.rename("kinsol_info.log", outdir + '/' + prefix + '.log')
 
 # ****** run main ****** #
 if __name__ == '__main__':
