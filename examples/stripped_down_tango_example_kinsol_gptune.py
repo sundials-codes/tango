@@ -107,7 +107,7 @@ def parse_args():
     parser.add_argument('--adapt_beta_factor', type=float, default=0.5,
                         help='Adapt relaxation factor')
 
-    parser.add_argument('--maxIters', type=int, default=500,
+    parser.add_argument('--maxIters', type=int, default=100,
                         help='maximum number iterations')
 
     parser.add_argument('--useMaxIters', action='store_true',
@@ -129,11 +129,15 @@ def parse_args():
     parser.add_argument('--outputdir', type=str, default='output',
                         help='output directory')
 
+    # GPTune options
     parser.add_argument('--gptune', type=str, nargs='+', default=None,
                         choices=['beta', 'mAA', 'delayAA', 'adapt_mAA',
                                  'adapt_mAA_factor', 'adapt_beta',
                                  'adapt_beta_factor'],
                         help='GPTune optimization parameters')
+
+    parser.add_argument('--samples', type=int, default=20,
+                        help='number of GPTune samples')
 
     # parse command line args
     args = parser.parse_args()
@@ -501,7 +505,7 @@ class Problem:
 
         if kin_flag < 0:
             print(f'KINSol failed with return value {kin_flag}')
-            return 200
+            return int(kwargs["maxIters"])
         elif kin_flag > 0:
             print(f'KINSol returned {kin_flag}')
         else:
@@ -514,6 +518,13 @@ class Problem:
 
         return Problem.numIters
 
+
+def is_int(n):
+    if isinstance(n, int):
+        return True
+    if isinstance(n, float):
+        return False
+    return False
 
 def objectives(point):
 
@@ -547,7 +558,7 @@ def runGPTune(args):
                                        name="mAA"))
         parameters_output_list.append("mAA")
     if "delayAA" in parameters:
-        parameters_list.append(Integer(1, 50, transform="normalize",
+        parameters_list.append(Integer(1, 40, transform="normalize",
                                        name="delayAA"))
         parameters_output_list.append("delayAA")
     if "adapt_mAA" in parameters:
@@ -606,16 +617,22 @@ def runGPTune(args):
                     driverabspath=os.path.abspath(__file__))
 
     giventask = [[args.p]]
-    (data, models, stats) = gptune.SLA(50, 10, Tgiven=giventask)
+    (data, models, stats) = gptune.SLA(args.samples, 10, Tgiven=giventask)
 
+    opt_idx = np.argmin(data.O)
     print("stats: ", stats)
     """ Print all input and parameter samples """
     print("  Tasks:", data.I)
     print("  Parameter Samples:", data.P)
     print("  Outputs:", data.O)
-    print(f"    Optimum iterations: {data.O[np.argmin(data.O)]}")
+    print(f"    Optimum iterations: {data.O[opt_idx]}")
     print(f"    Optimizing: {parameters_output_list}")
-    print(f"    Optimum Params: {data.P[np.argmin(data.O)]}")
+    print(f"    Optimum Params: {data.P[opt_idx]}")
+
+    run_flags=''
+    for idx, val in enumerate(parameters_output_list):
+        run_flags += f' --{val} {data.P[opt_idx][idx]}'
+    print(run_flags)
 
 
 # ****** Main ***** #
@@ -656,9 +673,9 @@ def main():
         resR_nrm = np.zeros((Problem.numIters, 1))
         for i in np.arange(0, Problem.numIters):
             resF_nrm[i] = np.sqrt(np.sum(Problem.F_hist[i, :]**2))
-            resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
-            # resF_nrm[i] = np.sqrt(np.mean(Problem.F_hist[i, :]**2))
-            # resR_nrm[i] = np.sqrt(np.mean(Problem.R_hist[i, :]**2))
+            #resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
+            #resF_nrm[i] = np.sqrt(np.mean(Problem.F_hist[i, :]**2))
+            resR_nrm[i] = np.sqrt(np.mean(Problem.R_hist[i, :]**2))
         np.savetxt(outdir + '/' + prefix + '_Fresid.txt', resF_nrm)
         np.savetxt(outdir + '/' + prefix + '_Rresid.txt', resR_nrm)
 
