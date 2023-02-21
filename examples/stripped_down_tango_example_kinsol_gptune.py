@@ -659,14 +659,16 @@ def main():
         # add a prefix for different configurations
         prefix = 'p_' + str(args.p)
         prefix = prefix + '_beta_' + str(args.beta)
-        prefix = prefix + '_adapt-beta_' + str(args.adapt_beta)
-        prefix = prefix + '_adapt-beta-factor_' + str(args.adapt_beta_factor)
-        prefix = prefix + '_m_' + str(args.mAA)
-        prefix = prefix + '_delay_' + str(args.delayAA)
-        prefix = prefix + '_adapt-m_' + str(args.adapt_mAA)
-        prefix = prefix + '_adapt-m-factor_' + str(args.adapt_mAA_factor)
+        if args.mAA > 0:
+            prefix = prefix + '_m_' + str(args.mAA)
+        if args.adapt_mAA:
+            prefix = prefix + '_adapt-m_True_adapt-m-factor_' + str(args.adapt_mAA_factor)
+        if args.adapt_beta:
+            prefix = prefix + '_adapt-beta_True_adapt-beta-factor_' + str(args.adapt_beta_factor)
+        if args.delayAA > 0:
+            prefix = prefix + '_delay_' + str(args.delayAA)
         if args.addnoise:
-            prefix = prefix + '_noise'
+            prefix = prefix + '_noise_True'
 
         # save residual norm history
         resF_nrm = np.zeros((Problem.numIters, 1))
@@ -676,8 +678,8 @@ def main():
             #resR_nrm[i] = np.sqrt(np.sum(Problem.R_hist[i, :]**2))
             #resF_nrm[i] = np.sqrt(np.mean(Problem.F_hist[i, :]**2))
             resR_nrm[i] = np.sqrt(np.mean(Problem.R_hist[i, :]**2))
-        np.savetxt(outdir + '/' + prefix + '_Fresid.txt', resF_nrm)
-        np.savetxt(outdir + '/' + prefix + '_Rresid.txt', resR_nrm)
+        np.savetxt(outdir + '/' + prefix + '_resid_F.txt', resF_nrm)
+        np.savetxt(outdir + '/' + prefix + '_resid_R.txt', resR_nrm)
 
         os.rename("kinsol_info.log", outdir + '/' + prefix + '.log')
 

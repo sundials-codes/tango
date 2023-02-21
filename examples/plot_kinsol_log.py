@@ -29,20 +29,46 @@ def main():
     for fn in args.filenames:
 
         # get data
-        nni, beta, gain, lAA = read_log(fn)
+        lAA, beta, gain = read_log(fn)
 
         # parse file name to get run settings
-        fname = os.path.splitext(os.path.basename(fn))[0].split("_")
+        fname_list = os.path.splitext(os.path.basename(fn))[0].split("_")
+        fname_dict = {fname_list[i]: fname_list[i + 1] for i in range(0, len(fname_list), 2)}
 
-        # get parameters
-        p = float(fname[1])
-        b = float(fname[3])
-        adapt_b = int(fname[5] == 'True')
-        adapt_b_factor = float(fname[7])
-        m = int(fname[9])
-        delay = int(fname[11])
-        adapt_m = int(fname[13] == 'True')
-        adapt_m_factor = float(fname[15])
+        # get method name and parameters, set title
+        method = "KINSOL"
+        if "p" in fname_dict:
+            power = float(fname_dict["p"])
+        else:
+            power = 0
+        if "beta" in fname_dict:
+            b = float(fname_dict["beta"])
+        else:
+            b = 1.0
+        if "m" in fname_dict:
+            m = int(fname_dict["m"])
+        else:
+            m = 0
+        if "delay" in fname_dict:
+            delay = int(fname_dict["delay"])
+        else:
+            delay = 0
+        if "adapt-m" in fname_dict:
+            adapt_m = int(fname_dict["adapt-m"] == 'True')
+        else:
+            adapt_m = 0
+        if "adapt-m-factor" in fname_dict:
+            adapt_m_factor = float(fname_dict["adapt-m-factor"])
+        else:
+            adapt_m_factor = 1.0
+        if "adapt-beta" in fname_dict:
+            adapt_b = int(fname_dict["adapt-beta"] == 'True')
+        else:
+            adapt_b = 0
+        if "adapt-beta-factor" in fname_dict:
+            adapt_b_factor = float(fname_dict["adapt-beta-factor"])
+        else:
+            adapt_b_factor = 0.5
 
         # create label for this data
         label = ''
@@ -57,13 +83,13 @@ def main():
         if delay > 0:
             label += f', delay={delay}'
 
-        ax1.plot(range(len(beta)), beta, label=label)
-        ax2.plot(range(len(gain)), gain, label=label)
-        ax3.plot(range(len(lAA)), lAA, label=label)
+        ax1.plot(range(len(lAA)), lAA, label=label, marker='.')
+        ax2.plot(range(len(beta)), beta, label=label, marker='.')
+        ax3.plot(range(len(gain)), gain, label=label, marker='.')
 
-    ax1.set_title("Beta")
-    ax2.set_title("Gain")
-    ax3.set_title("lAA")
+    ax1.set_title("lAA")
+    ax2.set_title("Beta")
+    ax3.set_title("Gain")
 
     ax1.legend(loc='best')
     ax2.legend(loc='best')
@@ -77,7 +103,6 @@ def read_log(logfile):
 
     print(f"Reading {logfile}")
 
-    nni = list()
     beta = list()
     gain = list()
     lAA = list()
@@ -96,21 +121,17 @@ def read_log(logfile):
             # split line into list
             text = shlex.split(line)
 
-            if "nni" in line:
-                nni.append(int(text[2][:-1]))
-
             if "beta" in line:
-                if "gain" in line:
-                    beta.append(float(text[-1]))
-                    gain.append(float(text[8]))
-                else:
-                    beta.append(float(text[2]))
+                beta.append(float(text[-1]))
+                if float(text[2]) < 0:
                     gain.append(float('nan'))
+                else:
+                    gain.append(float(text[2]))
 
             if "lAA" in line:
                 lAA.append(int(text[2]))
 
-    return nni, beta, gain, lAA
+    return lAA, beta, gain
 
 
 # -----------------------------------------------------------------------------

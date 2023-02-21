@@ -71,37 +71,74 @@ def main():
     for outfile in args.outfiles:
 
         # parse file name to get run settings
-        fname = os.path.basename(outfile).split("_")
+        fname_list = os.path.basename(outfile).split("_")
+        fname_dict = {fname_list[i]: fname_list[i + 1] for i in range(0, len(fname_list), 2)}
 
         # get method name and parameters, set title
         method = "KINSOL"
-        power = float(fname[1])
-        beta = float(fname[3])
-        adapt_b = int(fname[5] == 'True')
-        adapt_b_factor = float(fname[7])
-        mAA = int(fname[9])
-        delayAA = int(fname[11])
-        adapt_m = int(fname[13] == 'True')
-        adapt_m_factor = float(fname[15])
+        if "p" in fname_dict:
+            power = float(fname_dict["p"])
+        else:
+            power = 0
+        if "beta" in fname_dict:
+            beta = float(fname_dict["beta"])
+        else:
+            beta = 1.0
+        if "m" in fname_dict:
+            mAA = int(fname_dict["m"])
+        else:
+            mAA = 0
+        if "delay" in fname_dict:
+            delayAA = int(fname_dict["delay"])
+        else:
+            delayAA = 0
+        if "adapt-m" in fname_dict:
+            adapt_m = int(fname_dict["adapt-m"] == 'True')
+        else:
+            adapt_m = 0
+        if "adapt-m-factor" in fname_dict:
+            adapt_m_factor = float(fname_dict["adapt-m-factor"])
+        else:
+            adapt_m_factor = 1.0
+        if "adapt-beta" in fname_dict:
+            adapt_b = int(fname_dict["adapt-beta"] == 'True')
+        else:
+            adapt_b = 0
+        if "adapt-beta-factor" in fname_dict:
+            adapt_b_factor = float(fname_dict["adapt-beta-factor"])
+        else:
+            adapt_b_factor = 0.5
+
+        legend = ''
+        if adapt_b:
+            legend = f'$\\beta^*_0$={beta:.2f} ({adapt_b_factor:.2f})'
+        else:
+            legend = f'$\\beta$={beta:.2f}'
+        if mAA > 0 and not adapt_m:
+            legend += f', m={mAA}'
+        if mAA > 0 and adapt_m:
+            legend += f', m=0..{mAA} ({adapt_m_factor:.2f})'
+        if delayAA > 0:
+            legend += f', delay={delayAA}'
 
         # create legend entry for this data
-        if args.legend:
-            legend = args.legend[fcount]
-        elif args.legendinfo:
-            legend = make_legend_label(args.legendinfo, method, alpha,
-                                       beta, mAA, delayAA)
-        else:
-            legend = ''
-            if adapt_b:
-                legend = f'$\\beta^*_0$={beta:.2f} ({adapt_b_factor:.2f})'
-            else:
-                legend = f'$\\beta$={beta:.2f}'
-            if mAA > 0 and not adapt_m:
-                legend += f', m={mAA}'
-            if mAA > 0 and adapt_m:
-                legend += f', m=0..{mAA} ({adapt_m_factor:.2f})'
-            if delayAA > 0:
-                legend += f', delay={delayAA}'
+        # if args.legend:
+        #     legend = args.legend[fcount]
+        # elif args.legendinfo:
+        #     legend = make_legend_label(args.legendinfo, method, alpha,
+        #                                beta, mAA, delayAA)
+        # else:
+        #     legend = ''
+        #     if adapt_b:
+        #         legend = f'$\\beta^*_0$={beta:.2f} ({adapt_b_factor:.2f})'
+        #     else:
+        #         legend = f'$\\beta$={beta:.2f}'
+        #     if mAA > 0 and not adapt_m:
+        #         legend += f', m={mAA}'
+        #     if mAA > 0 and adapt_m:
+        #         legend += f', m=0..{mAA} ({adapt_m_factor:.2f})'
+        #     if delayAA > 0:
+        #         legend += f', delay={delayAA}'
 
         # load data
         data = np.loadtxt(outfile)
