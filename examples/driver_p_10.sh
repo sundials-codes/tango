@@ -347,10 +347,25 @@ plot_compare()
 # exit 0
 
 # Compare different configurations
-plot_compare
+# plot_compare
 
 # "Best" methods from above
-# ./plot_output.py \
+./plot_output.py \
+    output_p_10_tol_1.0e-11/p_10.0_beta_0.06_resid_F.txt \
+    output_p_10_tol_1.0e-6/p_10.0_beta_0.143118_resid_F.txt \
+    output_p_10_tol_1.0e-6/p_10.0_beta_0.012759_m_3_resid_F.txt \
+    output_p_10_tol_1.0e-11/p_10.0_beta_0.140555_m_10_delay_40_resid_F.txt \
+    output_p_10_tol_1.0e-8/p_10.0_beta_0.121349_m_4_delay_12_resid_F.txt \
+    output_p_10_tol_1.0e-11/p_10.0_beta_0.079727_m_5_adapt-m_True_adapt-m-factor_95.945563_resid_F.txt \
+    output_p_10_tol_1.0e-11/p_10.0_beta_0.092451_m_10_adapt-m_True_adapt-m-factor_1.021288_delay_40_resid_F.txt \
+    output_p_10_tol_1.0e-8/p_10.0_beta_0.049767_m_7_adapt-m_True_adapt-m-factor_1.0_delay_1_resid_F.txt \
+    output_p_10_tol_1.0e-6/p_10.0_beta_0.123857_m_10_adapt-m_True_adapt-m-factor_100.0_adapt-beta_True_adapt-beta-factor_0.999713_delay_35_resid_F.txt
 
 # Down select from the "Best"
-# ./plot_output.py \
+./plot_output.py \
+    output_p_10_tol_1.0e-11/p_10.0_beta_0.06_resid_F.txt \
+    output_p_10_tol_1.0e-6/p_10.0_beta_0.143118_resid_F.txt \
+    output_p_10_tol_1.0e-6/p_10.0_beta_0.012759_m_3_resid_F.txt \
+    output_p_10_tol_1.0e-11/p_10.0_beta_0.140555_m_10_delay_40_resid_F.txt \
+    output_p_10_tol_1.0e-8/p_10.0_beta_0.121349_m_4_delay_12_resid_F.txt \
+    output_p_10_tol_1.0e-8/p_10.0_beta_0.049767_m_7_adapt-m_True_adapt-m-factor_1.0_delay_1_resid_F.txt
