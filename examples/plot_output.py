@@ -111,13 +111,19 @@ def main():
 
         legend = ''
         if adapt_b:
-            legend = f'$\\beta^*_0$={beta:.2f} ({adapt_b_factor:.2f})'
+            if adapt_b_factor != 0.5:
+                legend = f'$\\beta^*_0$={beta:.2f} ({adapt_b_factor:.2f})'
+            else:
+                legend = f'$\\beta^*_0$={beta:.2f}'
         else:
             legend = f'$\\beta$={beta:.2f}'
         if mAA > 0 and not adapt_m:
             legend += f', m={mAA}'
         if mAA > 0 and adapt_m:
-            legend += f', m=0..{mAA} ({adapt_m_factor:.2f})'
+            if adapt_m_factor != 1.0:
+                legend += f', m=0..{mAA} ({adapt_m_factor:.0f})'
+            else:
+                legend += f', m=0..{mAA}'
         if delayAA > 0:
             legend += f', delay={delayAA}'
 

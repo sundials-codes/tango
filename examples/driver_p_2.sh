@@ -346,16 +346,16 @@ plot_compare()
 # plot_compare
 
 # "Best" methods from above
-./plot_output.py \
-    output_p_2_tol_1.0e-11/p_2.0_beta_0.3_resid_F.txt \
-    output_p_2_tol_1.0e-8/p_2.0_beta_0.398905_resid_F.txt \
-    output_p_2_tol_1.0e-11/p_2.0_beta_0.127969_m_8_resid_F.txt \
-    output_p_2_tol_1.0e-11/p_2.0_beta_0.318384_m_5_delay_1_resid_F.txt \
-    output_p_2_tol_1.0e-6/p_2.0_beta_0.366449_m_3_adapt-m_True_adapt-m-factor_90.89083_resid_F.txt \
-    output_p_2_tol_1.0e-6/p_2.0_beta_0.364744_m_1_adapt-m_True_adapt-m-factor_52.277289_delay_1_resid_F.txt \
-    output_p_2_tol_1.0e-6/p_2.0_beta_0.134305_m_10_adapt-beta_True_adapt-beta-factor_0.242516_delay_4_resid_F.txt \
-    output_p_2_tol_1.0e-11/p_2.0_beta_0.470486_m_1_adapt-m_True_adapt-m-factor_48.563464_adapt-beta_True_adapt-beta-factor_0.599727_resid_F.txt \
-    output_p_2_tol_1.0e-11/p_2.0_beta_0.471083_m_1_adapt-m_True_adapt-m-factor_1.0_adapt-beta_True_adapt-beta-factor_0.604706_delay_2_resid_F.txt
+# ./plot_output.py \
+#     output_p_2_tol_1.0e-11/p_2.0_beta_0.3_resid_F.txt \
+#     output_p_2_tol_1.0e-8/p_2.0_beta_0.398905_resid_F.txt \
+#     output_p_2_tol_1.0e-11/p_2.0_beta_0.127969_m_8_resid_F.txt \
+#     output_p_2_tol_1.0e-11/p_2.0_beta_0.318384_m_5_delay_1_resid_F.txt \
+#     output_p_2_tol_1.0e-6/p_2.0_beta_0.366449_m_3_adapt-m_True_adapt-m-factor_90.89083_resid_F.txt \
+#     output_p_2_tol_1.0e-6/p_2.0_beta_0.364744_m_1_adapt-m_True_adapt-m-factor_52.277289_delay_1_resid_F.txt \
+#     output_p_2_tol_1.0e-6/p_2.0_beta_0.134305_m_10_adapt-beta_True_adapt-beta-factor_0.242516_delay_4_resid_F.txt \
+#     output_p_2_tol_1.0e-11/p_2.0_beta_0.470486_m_1_adapt-m_True_adapt-m-factor_48.563464_adapt-beta_True_adapt-beta-factor_0.599727_resid_F.txt \
+#     output_p_2_tol_1.0e-11/p_2.0_beta_0.471083_m_1_adapt-m_True_adapt-m-factor_1.0_adapt-beta_True_adapt-beta-factor_0.604706_delay_2_resid_F.txt
 
 # Down select from the "Best"
 ./plot_output.py \
@@ -363,4 +363,5 @@ plot_compare()
     output_p_2_tol_1.0e-8/p_2.0_beta_0.398905_resid_F.txt \
     output_p_2_tol_1.0e-11/p_2.0_beta_0.318384_m_5_delay_1_resid_F.txt \
     output_p_2_tol_1.0e-6/p_2.0_beta_0.366449_m_3_adapt-m_True_adapt-m-factor_90.89083_resid_F.txt \
-    output_p_2_tol_1.0e-6/p_2.0_beta_0.134305_m_10_adapt-beta_True_adapt-beta-factor_0.242516_delay_4_resid_F.txt
+    output_p_2_tol_1.0e-6/p_2.0_beta_0.134305_m_10_adapt-beta_True_adapt-beta-factor_0.242516_delay_4_resid_F.txt \
+    --save
