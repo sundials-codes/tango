@@ -358,10 +358,26 @@ plot_compare()
 #     output_p_2_tol_1.0e-11/p_2.0_beta_0.471083_m_1_adapt-m_True_adapt-m-factor_1.0_adapt-beta_True_adapt-beta-factor_0.604706_delay_2_resid_F.txt
 
 # Down select from the "Best"
-./plot_output.py \
-    output_p_2_tol_1.0e-11/p_2.0_beta_0.3_resid_F.txt \
-    output_p_2_tol_1.0e-8/p_2.0_beta_0.398905_resid_F.txt \
-    output_p_2_tol_1.0e-11/p_2.0_beta_0.318384_m_5_delay_1_resid_F.txt \
-    output_p_2_tol_1.0e-6/p_2.0_beta_0.366449_m_3_adapt-m_True_adapt-m-factor_90.89083_resid_F.txt \
-    output_p_2_tol_1.0e-6/p_2.0_beta_0.134305_m_10_adapt-beta_True_adapt-beta-factor_0.242516_delay_4_resid_F.txt \
+# ./plot_output.py \
+#     output_p_2_tol_1.0e-11/p_2.0_beta_0.3_resid_F.txt \
+#     output_p_2_tol_1.0e-8/p_2.0_beta_0.398905_resid_F.txt \
+#     output_p_2_tol_1.0e-11/p_2.0_beta_0.318384_m_5_delay_1_resid_F.txt \
+#     output_p_2_tol_1.0e-6/p_2.0_beta_0.366449_m_3_adapt-m_True_adapt-m-factor_90.89083_resid_F.txt \
+#     output_p_2_tol_1.0e-6/p_2.0_beta_0.134305_m_10_adapt-beta_True_adapt-beta-factor_0.242516_delay_4_resid_F.txt \
+#     --save
+
+./plot_kinsol_log.py \
+    output_p_2_tol_1.0e-6/p_2.0_beta_0.366449_m_3_adapt-m_True_adapt-m-factor_90.89083.log \
     --save
+
+mv fig-depth.pdf fig-depth-p2-1.pdf
+mv fig-beta.pdf fig-beta-p2-1.pdf
+mv fig-gain.pdf fig-gain-p2-1.pdf
+
+./plot_kinsol_log.py \
+    output_p_2_tol_1.0e-6/p_2.0_beta_0.134305_m_10_adapt-beta_True_adapt-beta-factor_0.242516_delay_4.log \
+    --save
+
+mv fig-depth.pdf fig-depth-p2-2.pdf
+mv fig-beta.pdf fig-beta-p2-2.pdf
+mv fig-gain.pdf fig-gain-p2-2.pdf

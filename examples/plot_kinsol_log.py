@@ -18,6 +18,9 @@ def main():
     parser.add_argument('filenames', type=str, nargs="+",
                         help='Files to parse')
 
+    parser.add_argument('--save', action='store_true',
+                        help='save figure to file')
+
     # parse command line args
     args = parser.parse_args()
 
@@ -87,15 +90,28 @@ def main():
         ax2.plot(range(len(beta)), beta, label=label, marker='.')
         ax3.plot(range(len(gain)), gain, label=label, marker='.')
 
-    ax1.set_title("lAA")
-    ax2.set_title("Beta")
-    ax3.set_title("Gain")
+    ax1.set_title("Depth History")
+    ax2.set_title("$\\beta$ History")
+    ax3.set_title("Gain History")
+
+    ax1.set_xlabel('Iteration')
+    ax2.set_xlabel('Iteration')
+    ax3.set_xlabel('Iteration')
+
+    ax1.set_ylabel('$m_k$')
+    ax2.set_ylabel('$\\beta_k$')
+    ax3.set_ylabel('$\\theta_k$')
 
     ax1.legend(loc='best')
     ax2.legend(loc='best')
     ax3.legend(loc='best')
 
-    plt.show()
+    if args.save:
+        fig1.savefig("fig-depth.pdf", bbox_inches='tight')
+        fig2.savefig("fig-beta.pdf", bbox_inches='tight')
+        fig3.savefig("fig-gain.pdf", bbox_inches='tight')
+    else:
+        plt.show()
 
 def read_log(logfile):
 
